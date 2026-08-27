@@ -153,34 +153,74 @@ function watchAd() {
 }
 
 
-function dailyBonus() {
+async function dailyBonus() {
 
-    const lastClaim = localStorage.getItem("dailyBonus");
+    const tg = window.Telegram?.WebApp;
 
-    const today = new Date().toDateString();
-
-    if (lastClaim === today) {
-
-        alert("Daily bonus already claimed.");
-
+    if (!tg || !tg.initDataUnsafe?.user) {
+        alert("Please open Watch2Earn from Telegram.");
         return;
     }
 
-    const reward = 250;
+    const telegramId = tg.initDataUnsafe.user.id;
 
-    balance += reward;
+    const button = document.getElementById("bonusBtn");
 
-    localStorage.setItem("dailyBonus", today);
+    button.disabled = true;
+    button.textContent = "Claiming...";
 
-    saveData();
+    try {
 
-    updateUI();
+        const response = await fetch(
+            `${API_URL}/daily-bonus/${telegramId}`,
+            {
+                method: "POST"
+            }
+        );
 
-    document.getElementById("bonusBtn").textContent = "Claimed";
+        const data = await response.json();
 
-    document.getElementById("dailyStatus").textContent = "Claimed";
+        if (!response.ok) {
+            throw new Error(
+                data.detail || "Something went wrong"
+            );
+        }
 
-    alert("Daily Bonus +" + reward + " W2E");
+        if (!data.success) {
+
+            alert(
+                `Daily bonus already claimed.\n` +
+                `Try again in ${data.remaining_hours}h ` +
+                `${data.remaining_minutes}m.`
+            );
+
+            button.textContent = "Claimed";
+            return;
+        }
+
+        // Update balance from server
+        balance = data.balance;
+
+        updateUI();
+
+        button.textContent = "Claimed";
+
+        alert(
+            `🎁 +${data.reward} W2E added!`
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to claim bonus. Please try again."
+        );
+
+        button.disabled = false;
+        button.textContent = "Claim";
+
+    }
 }
 
 
