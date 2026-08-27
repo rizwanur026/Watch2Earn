@@ -1,26 +1,31 @@
-// Telegram Mini App
-const tg = window.Telegram?.WebApp;
+const tg = window.Telegram.WebApp;
 
-if (tg) {
-    tg.ready();
-    tg.expand();
+tg.ready();
+tg.expand();
+
+const user = tg.initDataUnsafe?.user;
+
+if (user) {
+    document.querySelector(".header h1").textContent =
+        "Hi, " + (user.first_name || "User") + "!";
+
+    document.querySelector(".profile-card h2").textContent =
+        (user.first_name || "") + " " + (user.last_name || "");
+
+    document.querySelector(".profile-card p").textContent =
+        "Telegram ID: " + user.id;
+
+    console.log("Telegram User:", user);
+} else {
+    document.querySelector(".header h1").textContent =
+        "Hi, Guest!";
+
+    document.querySelector(".profile-card h2").textContent =
+        "Guest";
+
+    document.querySelector(".profile-card p").textContent =
+        "Open this app from Telegram";
 }
-
-// Telegram User
-const telegramUser = tg?.initDataUnsafe?.user;
-
-const userName = telegramUser?.first_name || "Guest";
-const userId = telegramUser?.id || "Demo";
-
-// Update profile
-document.querySelector(".header h1").textContent =
-    "Hi, " + userName + "!";
-
-document.querySelector(".profile-card h2").textContent =
-    userName;
-
-document.querySelector(".profile-card p").textContent =
-    "Telegram ID: " + userId;
 
 let balance = Number(localStorage.getItem("balance")) || 0;
 let adsWatched = Number(localStorage.getItem("adsWatched")) || 0;
