@@ -1,3 +1,27 @@
+// Telegram Mini App
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+    tg.ready();
+    tg.expand();
+}
+
+// Telegram User
+const telegramUser = tg?.initDataUnsafe?.user;
+
+const userName = telegramUser?.first_name || "Guest";
+const userId = telegramUser?.id || "Demo";
+
+// Update profile
+document.querySelector(".header h1").textContent =
+    "Hi, " + userName + "!";
+
+document.querySelector(".profile-card h2").textContent =
+    userName;
+
+document.querySelector(".profile-card p").textContent =
+    "Telegram ID: " + userId;
+
 let balance = Number(localStorage.getItem("balance")) || 0;
 let adsWatched = Number(localStorage.getItem("adsWatched")) || 0;
 let referrals = Number(localStorage.getItem("referrals")) || 0;
