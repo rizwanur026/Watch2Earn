@@ -299,3 +299,163 @@ def get_user(telegram_id: int):
     return {
         "user": dict(user)
     }
+
+from datetime import datetime, timezone
+
+
+DAILY_BONUS = 100
+
+
+@app.post("/daily-bonus/{telegram_id}")
+def claim_daily_bonus(telegram_id: int):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    # Check user
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        connection.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    # Check previous claim
+    cursor.execute(
+        """
+        SELECT *
+        FROM daily_claims
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+    claim = cursor.fetchone()
+
+    now = datetime.now(timezone.utc)
+
+
+    if claim and claim["last_claim"]:
+
+        last_claim = claim["last_claim"]
+
+        # Make timestamp timezone-aware if needed
+        if last_claim.tzinfo is None:
+            last_claim = last_claim.replace(
+                tzinfo=timezone.utc
+            )
+
+        elapsed = now - last_claim
+
+        if elapsed.total_seconds() < 86400:
+
+            remaining = 86400 - elapsed.total_seconds()
+
+            hours = int(remaining // 3600)
+            minutes = int(
+                (remaining % 3600) // 60
+            )
+
+            cursor.close()
+            connection.close()
+
+            return {
+                "success": False,
+                "message": "Daily bonus already claimed",
+                "remaining_hours": hours,
+                "remaining_minutes": minutes
+            }
+
+
+    # Add reward
+    cursor.execute(
+        """
+        UPDATE users
+        SET balance = balance + %s
+        WHERE telegram_id = %s
+        """,
+        (
+            DAILY_BONUS,
+            telegram_id
+        )
+    )
+
+
+    # Record transaction
+    cursor.execute(
+        """
+        INSERT INTO reward_transactions
+        (
+            telegram_id,
+            reward_type,
+            amount
+        )
+        VALUES (%s, %s, %s)
+        """,
+        (
+            telegram_id,
+            "daily_bonus",
+            DAILY_BONUS
+        )
+    )
+
+
+    # Update daily claim
+    cursor.execute(
+        """
+        INSERT INTO daily_claims
+        (
+            telegram_id,
+            last_claim
+        )
+        VALUES (%s, %s)
+
+        ON CONFLICT (telegram_id)
+        DO UPDATE SET
+            last_claim = EXCLUDED.last_claim
+        """,
+        (
+            telegram_id,
+            now
+        )
+    )
+
+
+    connection.commit()
+
+
+    # Get updated balance
+    cursor.execute(
+        """
+        SELECT balance
+        FROM users
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+    updated_user = cursor.fetchone()
+
+
+    cursor.close()
+    connection.close()
+
+
+    return {
+        "success": True,
+        "reward": DAILY_BONUS,
+        "balance": updated_user["balance"]
+    }
