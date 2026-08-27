@@ -318,3 +318,4 @@ function showPage(pageId) {
 
 
 updateUI();
+authenticateUser();
