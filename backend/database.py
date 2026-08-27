@@ -1,24 +1,34 @@
-import sqlite3
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-DATABASE = "watch2earn.db"
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_connection():
-    connection = sqlite3.connect(DATABASE)
-    connection.row_factory = sqlite3.Row
-    return connection
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
+
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=RealDictCursor
+    )
 
 
 def init_database():
+
     connection = get_connection()
 
-    connection.execute("""
+    cursor = connection.cursor()
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER UNIQUE NOT NULL,
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT UNIQUE NOT NULL,
             username TEXT,
             first_name TEXT,
-            balance INTEGER DEFAULT 0,
+            balance BIGINT DEFAULT 0,
             referrals INTEGER DEFAULT 0,
             ads_watched INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -26,9 +36,6 @@ def init_database():
     """)
 
     connection.commit()
+
+    cursor.close()
     connection.close()
-
-
-if __name__ == "__main__":
-    init_database()
-    print("Database initialized successfully.")
