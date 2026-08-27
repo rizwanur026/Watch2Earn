@@ -2,7 +2,7 @@
 // Watch2Earn Backend
 // ===============================
 
-const API_URL = "https://watch2earn-lp3w.onrender.com/";
+const API_URL = "https://watch2earn-lp3w.onrender.com";
 
 async function authenticateUser() {
 
