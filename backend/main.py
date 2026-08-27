@@ -1,9 +1,12 @@
 import os
 import hmac
 import hashlib
+import json
+from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from database import init_database, get_connection
@@ -12,35 +15,60 @@ from database import init_database, get_connection
 app = FastAPI(title="Watch2Earn API")
 
 
-# Initialize database
+# =========================
+# CORS
+# =========================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# =========================
+# Database
+# =========================
+
 init_database()
 
+
+# =========================
+# Models
+# =========================
 
 class TelegramAuth(BaseModel):
     init_data: str
 
 
-def verify_telegram_init_data(init_data: str):
-    """
-    Verify Telegram Mini App initData.
+# =========================
+# Telegram Verification
+# =========================
 
-    The bot token must be stored as an environment variable:
-    TELEGRAM_BOT_TOKEN
-    """
+def verify_telegram_init_data(init_data: str):
 
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
     if not bot_token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured")
+        raise RuntimeError(
+            "TELEGRAM_BOT_TOKEN is not configured"
+        )
 
-    data = dict(parse_qsl(init_data, keep_blank_values=True))
+    data = dict(
+        parse_qsl(
+            init_data,
+            keep_blank_values=True
+        )
+    )
 
     received_hash = data.pop("hash", None)
 
     if not received_hash:
         raise HTTPException(
             status_code=401,
-            detail="Missing Telegram hash"
+            detail="Telegram hash missing"
         )
 
     data_check_string = "\n".join(
@@ -66,11 +94,15 @@ def verify_telegram_init_data(init_data: str):
     ):
         raise HTTPException(
             status_code=401,
-            detail="Invalid Telegram initData"
+            detail="Invalid Telegram authentication"
         )
 
     return data
 
+
+# =========================
+# Home
+# =========================
 
 @app.get("/")
 def home():
@@ -78,9 +110,13 @@ def home():
     return {
         "status": "online",
         "app": "Watch2Earn",
-        "version": "1.0"
+        "version": "2.0"
     }
 
+
+# =========================
+# Health
+# =========================
 
 @app.get("/health")
 def health():
@@ -89,6 +125,10 @@ def health():
         "status": "healthy"
     }
 
+
+# =========================
+# Authenticate User
+# =========================
 
 @app.post("/auth")
 def authenticate_user(auth: TelegramAuth):
@@ -101,14 +141,32 @@ def authenticate_user(auth: TelegramAuth):
 
         raise HTTPException(
             status_code=401,
-            detail="Telegram user data missing"
+            detail="Telegram user missing"
         )
 
-    import json
+    try:
 
-    telegram_user = json.loads(data["user"])
+        telegram_user = json.loads(
+            data["user"]
+        )
 
-    telegram_id = telegram_user["id"]
+    except json.JSONDecodeError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user data"
+        )
+
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
+
 
     username = telegram_user.get(
         "username"
@@ -121,60 +179,123 @@ def authenticate_user(auth: TelegramAuth):
 
     connection = get_connection()
 
+    cursor = connection.cursor()
 
-    existing_user = connection.execute(
+
+    cursor.execute(
         """
-        SELECT * FROM users
-        WHERE telegram_id = ?
+        SELECT *
+        FROM users
+        WHERE telegram_id = %s
         """,
         (telegram_id,)
-    ).fetchone()
-
-
-    if existing_user:
-
-        connection.close()
-
-        return {
-            "status": "existing",
-            "user": dict(existing_user)
-        }
-
-
-    connection.execute(
-        """
-        INSERT INTO users
-        (
-            telegram_id,
-            username,
-            first_name
-        )
-        VALUES (?, ?, ?)
-        """,
-        (
-            telegram_id,
-            username,
-            first_name
-        )
     )
 
+    user = cursor.fetchone()
 
-    connection.commit()
+
+    if user:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET username = %s,
+                first_name = %s
+            WHERE telegram_id = %s
+            """,
+            (
+                username,
+                first_name,
+                telegram_id
+            )
+        )
+
+        connection.commit()
+
+    else:
+
+        cursor.execute(
+            """
+            INSERT INTO users
+            (
+                telegram_id,
+                username,
+                first_name,
+                balance,
+                referrals,
+                ads_watched
+            )
+            VALUES (%s, %s, %s, 0, 0, 0)
+            RETURNING *
+            """,
+            (
+                telegram_id,
+                username,
+                first_name
+            )
+        )
+
+        user = cursor.fetchone()
+
+        connection.commit()
 
 
-    new_user = connection.execute(
+    cursor.execute(
         """
-        SELECT * FROM users
-        WHERE telegram_id = ?
+        SELECT *
+        FROM users
+        WHERE telegram_id = %s
         """,
         (telegram_id,)
-    ).fetchone()
+    )
+
+    user = cursor.fetchone()
 
 
+    cursor.close()
     connection.close()
 
 
     return {
-        "status": "created",
-        "user": dict(new_user)
+        "status": "success",
+        "user": dict(user)
+    }
+
+
+# =========================
+# Get User
+# =========================
+
+@app.get("/users/{telegram_id}")
+def get_user(telegram_id: int):
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+    user = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+
+    return {
+        "user": dict(user)
     }
