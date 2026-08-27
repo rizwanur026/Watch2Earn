@@ -19,9 +19,9 @@ def get_connection():
 def init_database():
 
     connection = get_connection()
-
     cursor = connection.cursor()
 
+    # Users
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -32,6 +32,37 @@ def init_database():
             referrals INTEGER DEFAULT 0,
             ads_watched INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Reward history
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reward_transactions (
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT NOT NULL,
+            reward_type TEXT NOT NULL,
+            amount BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Daily bonus tracking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS daily_claims (
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT UNIQUE NOT NULL,
+            last_claim TIMESTAMP
+        )
+    """)
+
+    # Task completion tracking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_completions (
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT NOT NULL,
+            task_id TEXT NOT NULL,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (telegram_id, task_id)
         )
     """)
 
