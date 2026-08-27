@@ -1,3 +1,83 @@
+// ===============================
+// Watch2Earn Backend
+// ===============================
+
+const API_URL = "YOUR_RENDER_URL";
+
+async function authenticateUser() {
+
+    if (!window.Telegram?.WebApp) {
+        console.log("Telegram WebApp not detected");
+        return;
+    }
+
+    const tg = window.Telegram.WebApp;
+
+    tg.ready();
+    tg.expand();
+
+    const initData = tg.initData;
+
+    if (!initData) {
+        console.log("Telegram initData not available");
+        return;
+    }
+
+    try {
+
+        const response = await fetch(`${API_URL}/auth`, {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                init_data: initData
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Authentication failed");
+        }
+
+        console.log("Authenticated:", data);
+
+        if (data.user) {
+
+            balance = data.user.balance || 0;
+            adsWatched = data.user.ads_watched || 0;
+            referrals = data.user.referrals || 0;
+
+            updateUI();
+
+            const user = tg.initDataUnsafe?.user;
+
+            if (user) {
+
+                const fullName =
+                    `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
+                document.querySelector(".header h1").textContent =
+                    `Hi, ${user.first_name || "User"}!`;
+
+                document.querySelector(".profile-card h2").textContent =
+                    fullName || "User";
+
+                document.querySelector(".profile-card p").textContent =
+                    `Telegram ID: ${user.id}`;
+            }
+        }
+
+    } catch (error) {
+
+        console.error("Authentication error:", error);
+
+    }
+}
+
 const tg = window.Telegram.WebApp;
 
 tg.ready();
