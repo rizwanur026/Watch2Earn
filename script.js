@@ -298,13 +298,14 @@ function showPage(pageId) {
 
     const buttons = document.querySelectorAll(".nav-btn");
 
-    const pages = [
-        "home",
-        "tasks",
-        "games",
-        "leaderboard",
-        "wallet"
-    ];
+const pages = [
+    "home",
+    "tasks",
+    "games",
+    "leaderboard",
+    "wallet",
+    "profile"
+];
 
     const index = pages.indexOf(pageId);
 
