@@ -21,7 +21,10 @@ def init_database():
     connection = get_connection()
     cursor = connection.cursor()
 
+    # =========================
     # Users
+    # =========================
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -35,7 +38,11 @@ def init_database():
         )
     """)
 
-    # Reward history
+
+    # =========================
+    # Reward History
+    # =========================
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reward_transactions (
             id SERIAL PRIMARY KEY,
@@ -46,7 +53,11 @@ def init_database():
         )
     """)
 
-    # Daily bonus tracking
+
+    # =========================
+    # Daily Claims
+    # =========================
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS daily_claims (
             id SERIAL PRIMARY KEY,
@@ -55,7 +66,11 @@ def init_database():
         )
     """)
 
-    # Task completion tracking
+
+    # =========================
+    # Task Completions
+    # =========================
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS task_completions (
             id SERIAL PRIMARY KEY,
@@ -65,6 +80,25 @@ def init_database():
             UNIQUE (telegram_id, task_id)
         )
     """)
+
+
+    # =========================
+    # Tasks
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            task_type TEXT NOT NULL,
+            link TEXT,
+            reward BIGINT NOT NULL DEFAULT 0,
+            status BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
 
     connection.commit()
 
