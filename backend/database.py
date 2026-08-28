@@ -75,7 +75,7 @@ def init_database():
         CREATE TABLE IF NOT EXISTS task_completions (
             id SERIAL PRIMARY KEY,
             telegram_id BIGINT NOT NULL,
-            task_id TEXT NOT NULL,
+            task_id INTEGER NOT NULL
             completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (telegram_id, task_id)
         )
