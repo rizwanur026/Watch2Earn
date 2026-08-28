@@ -166,8 +166,12 @@ async function dailyBonus() {
 
     const button = document.getElementById("bonusBtn");
 
+    if (button.disabled) {
+        return;
+    }
+
     button.disabled = true;
-    button.textContent = "Claiming...";
+    button.textContent = "Checking...";
 
     try {
 
@@ -189,29 +193,32 @@ async function dailyBonus() {
         if (!data.success) {
 
             alert(
-                `Daily bonus already claimed.\n` +
+                `Daily bonus already claimed.\n\n` +
                 `Try again in ${data.remaining_hours}h ` +
                 `${data.remaining_minutes}m.`
             );
 
             button.textContent = "Claimed";
+
             return;
         }
 
-        // Update balance from server
-        balance = data.balance;
+        balance = Number(data.balance);
 
         updateUI();
 
         button.textContent = "Claimed";
 
         alert(
-            `🎁 +${data.reward} W2E added!`
+            `🎁 +${data.reward} W2E earned!`
         );
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Daily bonus error:",
+            error
+        );
 
         alert(
             "Unable to claim bonus. Please try again."
@@ -222,7 +229,6 @@ async function dailyBonus() {
 
     }
 }
-
 
 function completeTask(button, reward) {
 
