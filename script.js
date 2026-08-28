@@ -1,3 +1,4 @@
+```javascript
 // ===============================
 // Watch2Earn Frontend
 // ===============================
@@ -46,6 +47,7 @@ function updateUI() {
         }
 
     });
+
 }
 
 
@@ -247,9 +249,7 @@ function setGuestProfile() {
 async function loadTasks() {
 
     const container =
-        document.getElementById(
-            "tasksContainer"
-        );
+        document.getElementById("tasksContainer");
 
 
     if (!container) {
@@ -307,12 +307,6 @@ async function loadTasks() {
             );
 
         }
-
-
-        console.log(
-            "Tasks received:",
-            data.tasks
-        );
 
 
         if (
@@ -437,10 +431,8 @@ function renderTask(
 
 
     const taskType =
-        escapeHTML(
-            task.task_type ||
-            "website"
-        );
+        task.task_type ||
+        "website";
 
 
     const link =
@@ -501,6 +493,22 @@ function renderTask(
 
             }
         );
+
+    }
+
+
+    // Restore completed state
+    if (
+        sessionStorage.getItem(
+            `task_completed_${taskId}`
+        ) === "true"
+    ) {
+
+        button.textContent =
+            "Completed ✓";
+
+        button.disabled =
+            true;
 
     }
 
@@ -582,7 +590,11 @@ function escapeHTML(value) {
 // Start Task
 // ===============================
 
-async function startTask(taskId, link) {
+async function startTask(
+    taskId,
+    link,
+    button
+) {
 
     if (!tg || !tg.initData) {
 
@@ -591,7 +603,9 @@ async function startTask(taskId, link) {
         );
 
         return;
+
     }
+
 
     if (!link) {
 
@@ -600,10 +614,37 @@ async function startTask(taskId, link) {
         );
 
         return;
+
     }
+
+
+    if (
+        button &&
+        button.dataset.processing === "true"
+    ) {
+
+        return;
+
+    }
+
+
+    if (button) {
+
+        button.dataset.processing =
+            "true";
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            "Opened...";
+
+    }
+
 
     try {
 
+        // Open task link
         if (tg.openLink) {
 
             tg.openLink(link);
@@ -617,82 +658,66 @@ async function startTask(taskId, link) {
 
         }
 
+
+        // Ask user to confirm
         const completed =
             confirm(
                 "Did you complete this task?"
             );
 
+
         if (!completed) {
-            return;
-        }
 
-        const response =
-            await fetch(
-                `${API_URL}/tasks/${taskId}/complete`,
-                {
-                    method: "POST",
+            if (button) {
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                button.disabled =
+                    false;
 
-                    body: JSON.stringify({
-                        init_data:
-                            tg.initData
-                    })
-                }
-            );
+                button.dataset.processing =
+                    "false";
 
-        const data =
-            await response.json();
+                button.textContent =
+                    "Start";
 
-        if (!response.ok) {
-
-            throw new Error(
-                data.detail ||
-                "Task completion failed"
-            );
-        }
-
-        if (!data.success) {
-
-            alert(
-                data.message ||
-                "Task already completed."
-            );
+            }
 
             return;
+
         }
 
-        balance =
-            Number(
-                data.balance || 0
-            );
 
-        updateUI();
-
-        alert(
-            `Task completed!\n\n` +
-            `+${data.reward} W2E earned!`
+        // Complete task on server
+        await completeTask(
+            taskId,
+            button
         );
 
-        loadTasks();
 
     } catch (error) {
 
         console.error(
-            "Task completion error:",
+            "Start task error:",
             error
         );
 
-        alert(
-            "Unable to complete task. Please try again."
-        );
+
+        if (button) {
+
+            button.disabled =
+                false;
+
+            button.dataset.processing =
+                "false";
+
+            button.textContent =
+                "Start";
+
+        }
 
     }
 
 }
+
 
 // ===============================
 // Complete Task
@@ -712,27 +737,6 @@ async function completeTask(
         return;
 
     }
-
-
-    if (
-        button.dataset.completing === "true"
-    ) {
-
-        return;
-
-    }
-
-
-    button.dataset.completing =
-        "true";
-
-
-    button.disabled =
-        true;
-
-
-    button.textContent =
-        "Checking...";
 
 
     try {
@@ -773,14 +777,19 @@ async function completeTask(
         // Already completed
         if (!data.success) {
 
-            button.textContent =
-                "Completed ✓";
+            if (button) {
 
-            button.disabled =
-                true;
+                button.textContent =
+                    "Completed ✓";
 
-            button.dataset.completing =
-                "false";
+                button.disabled =
+                    true;
+
+                button.dataset.processing =
+                    "false";
+
+            }
+
 
             alert(
                 data.message ||
@@ -792,7 +801,7 @@ async function completeTask(
         }
 
 
-        // Update balance from server
+        // Update balance
         balance =
             Number(
                 data.balance || 0
@@ -802,20 +811,21 @@ async function completeTask(
         updateUI();
 
 
-        button.textContent =
-            "Completed ✓";
+        if (button) {
 
+            button.textContent =
+                "Completed ✓";
 
-        button.disabled =
-            true;
+            button.disabled =
+                true;
 
+            button.dataset.completed =
+                "true";
 
-        button.dataset.completed =
-            "true";
+            button.dataset.processing =
+                "false";
 
-
-        button.dataset.completing =
-            "false";
+        }
 
 
         sessionStorage.setItem(
@@ -837,16 +847,18 @@ async function completeTask(
         );
 
 
-        button.disabled =
-            false;
+        if (button) {
 
+            button.disabled =
+                false;
 
-        button.dataset.completing =
-            "false";
+            button.dataset.processing =
+                "false";
 
+            button.textContent =
+                "Start";
 
-        button.textContent =
-            "Complete";
+        }
 
 
         alert(
@@ -867,57 +879,81 @@ async function watchAd() {
 
     if (!tg || !tg.initData) {
 
-        alert("Please open Watch2Earn from Telegram.");
+        alert(
+            "Please open Watch2Earn from Telegram."
+        );
 
         return;
+
     }
+
 
     try {
 
-        const response = await fetch(
-            `${API_URL}/watch-ad`,
-            {
-                method: "POST",
+        const response =
+            await fetch(
+                `${API_URL}/watch-ad`,
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-                body: JSON.stringify({
-                    init_data: tg.initData
-                })
-            }
-        );
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
+                }
+            );
 
-        const data = await response.json();
+
+        const data =
+            await response.json();
+
 
         if (!response.ok) {
 
             throw new Error(
-                data.detail || "Unable to watch ad"
+                data.detail ||
+                "Unable to watch ad"
             );
+
         }
+
 
         if (!data.success) {
 
             alert(
-                data.message || "Ad reward failed."
+                data.message ||
+                "Ad reward failed."
             );
 
             return;
+
         }
 
-        balance = Number(data.balance || 0);
 
-        adsWatched = Number(
-            data.ads_watched || 0
-        );
+        balance =
+            Number(
+                data.balance || 0
+            );
+
+
+        adsWatched =
+            Number(
+                data.ads_watched || 0
+            );
+
 
         updateUI();
 
+
         alert(
-            `+${data.reward} W2E earned!`
+            `🎬 +${data.reward} W2E earned!`
         );
+
 
     } catch (error) {
 
@@ -926,10 +962,14 @@ async function watchAd() {
             error
         );
 
+
         alert(
+            error.message ||
             "Unable to give ad reward. Please try again."
         );
+
     }
+
 }
 
 
@@ -968,7 +1008,6 @@ async function dailyBonus() {
 
     button.disabled =
         true;
-
 
     button.textContent =
         "Checking...";
@@ -1022,7 +1061,6 @@ async function dailyBonus() {
             button.textContent =
                 "Claimed";
 
-
             return;
 
         }
@@ -1055,14 +1093,13 @@ async function dailyBonus() {
 
 
         alert(
-            "Unable to claim bonus. " +
-            "Please try again."
+            error.message ||
+            "Unable to claim bonus. Please try again."
         );
 
 
         button.disabled =
             false;
-
 
         button.textContent =
             "Claim";
@@ -1223,14 +1260,12 @@ function showPage(pageId) {
 
 
     const pages = [
-
         "home",
         "tasks",
         "games",
         "leaderboard",
         "wallet",
         "profile"
-
     ];
 
 
@@ -1267,3 +1302,4 @@ updateUI();
 authenticateUser();
 
 loadTasks();
+```
