@@ -580,3 +580,256 @@ def create_task(task: TaskCreate):
         "success": True,
         "task": dict(new_task)
     }
+# =========================
+# Complete Task
+# =========================
+
+class TaskComplete(BaseModel):
+    init_data: str
+
+
+@app.post("/tasks/{task_id}/complete")
+def complete_task(
+    task_id: int,
+    auth: TaskComplete
+):
+
+    # -------------------------
+    # Verify Telegram
+    # -------------------------
+
+    data = verify_telegram_init_data(
+        auth.init_data
+    )
+
+    if "user" not in data:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram data"
+        )
+
+
+    try:
+
+        telegram_user = json.loads(
+            data["user"]
+        )
+
+    except json.JSONDecodeError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user"
+        )
+
+
+    telegram_id =
+        telegram_user.get("id")
+
+
+    if not telegram_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
+
+
+    # -------------------------
+    # Database
+    # -------------------------
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+
+    # -------------------------
+    # Find task
+    # -------------------------
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM tasks
+        WHERE id = %s
+        AND status = TRUE
+        """,
+        (task_id,)
+    )
+
+
+    task = cursor.fetchone()
+
+
+    if not task:
+
+        cursor.close()
+        connection.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+
+    # -------------------------
+    # Check user
+    # -------------------------
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+
+    user = cursor.fetchone()
+
+
+    if not user:
+
+        cursor.close()
+        connection.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+
+    # -------------------------
+    # Check completion
+    # -------------------------
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM task_completions
+        WHERE telegram_id = %s
+        AND task_id = %s
+        """,
+        (
+            telegram_id,
+            str(task_id)
+        )
+    )
+
+
+    completed =
+        cursor.fetchone()
+
+
+    if completed:
+
+        cursor.close()
+        connection.close()
+
+        return {
+
+            "success": False,
+
+            "message":
+                "Task already completed"
+
+        }
+
+
+    # -------------------------
+    # Add reward
+    # -------------------------
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET balance = balance + %s
+        WHERE telegram_id = %s
+        """,
+        (
+            task["reward"],
+            telegram_id
+        )
+    )
+
+
+    # -------------------------
+    # Record completion
+    # -------------------------
+
+    cursor.execute(
+        """
+        INSERT INTO task_completions
+        (
+            telegram_id,
+            task_id
+        )
+        VALUES (%s, %s)
+        """,
+        (
+            telegram_id,
+            str(task_id)
+        )
+    )
+
+
+    # -------------------------
+    # Record transaction
+    # -------------------------
+
+    cursor.execute(
+        """
+        INSERT INTO reward_transactions
+        (
+            telegram_id,
+            reward_type,
+            amount
+        )
+        VALUES (%s, %s, %s)
+        """,
+        (
+            telegram_id,
+            "task",
+            task["reward"]
+        )
+    )
+
+
+    connection.commit()
+
+
+    # -------------------------
+    # Get new balance
+    # -------------------------
+
+    cursor.execute(
+        """
+        SELECT balance
+        FROM users
+        WHERE telegram_id = %s
+        """,
+        (telegram_id,)
+    )
+
+
+    updated_user =
+        cursor.fetchone()
+
+
+    cursor.close()
+    connection.close()
+
+
+    return {
+
+        "success": True,
+
+        "reward":
+            task["reward"],
+
+        "balance":
+            updated_user["balance"]
+
+    }
