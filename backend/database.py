@@ -7,8 +7,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_connection():
+
     if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not configured")
+        raise RuntimeError(
+            "DATABASE_URL is not configured"
+        )
 
     return psycopg2.connect(
         DATABASE_URL,
@@ -38,7 +41,6 @@ def init_database():
         )
     """)
 
-
     # =========================
     # Reward History
     # =========================
@@ -53,7 +55,6 @@ def init_database():
         )
     """)
 
-
     # =========================
     # Daily Claims
     # =========================
@@ -65,22 +66,6 @@ def init_database():
             last_claim TIMESTAMP
         )
     """)
-
-
-    # =========================
-    # Task Completions
-    # =========================
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS task_completions (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT NOT NULL,
-            task_id INTEGER NOT NULL
-            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (telegram_id, task_id)
-        )
-    """)
-
 
     # =========================
     # Tasks
@@ -99,6 +84,19 @@ def init_database():
         )
     """)
 
+    # =========================
+    # Task Completions
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_completions (
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT NOT NULL,
+            task_id INTEGER NOT NULL,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (telegram_id, task_id)
+        )
+    """)
 
     connection.commit()
 
