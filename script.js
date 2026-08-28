@@ -1,9 +1,14 @@
-```javascript
 // ===============================
 // Watch2Earn Frontend
 // ===============================
 
-const API_URL = "https://watch2earn-lp3w.onrender.com";
+const API_URL =
+    "https://watch2earn-lp3w.onrender.com";
+
+
+// ===============================
+// Global Data
+// ===============================
 
 let balance = 0;
 let adsWatched = 0;
@@ -14,11 +19,14 @@ let referrals = 0;
 // Telegram WebApp
 // ===============================
 
-const tg = window.Telegram?.WebApp;
+const tg =
+    window.Telegram?.WebApp;
 
 if (tg) {
+
     tg.ready();
     tg.expand();
+
 }
 
 
@@ -29,24 +37,40 @@ if (tg) {
 function updateUI() {
 
     const elements = {
+
         balance: balance,
+
         adsWatched: adsWatched,
+
         refCount: referrals,
+
         leaderBalance: balance,
+
         profileCoins: balance,
+
         profileAds: adsWatched,
+
         profileRefs: referrals
+
     };
 
-    Object.entries(elements).forEach(([id, value]) => {
 
-        const element = document.getElementById(id);
+    Object.entries(elements).forEach(
+        ([id, value]) => {
 
-        if (element) {
-            element.textContent = value;
+            const element =
+                document.getElementById(id);
+
+            if (element) {
+
+                element.textContent =
+                    value;
+
+            }
+
         }
+    );
 
-    });
 }
 
 
@@ -58,58 +82,77 @@ async function authenticateUser() {
 
     if (!tg || !tg.initData) {
 
-        console.log("Telegram WebApp not detected.");
+        console.log(
+            "Telegram WebApp not detected."
+        );
 
         setGuestProfile();
 
         return;
+
     }
+
 
     try {
 
-        const response = await fetch(`${API_URL}/auth`, {
+        const response =
+            await fetch(
+                `${API_URL}/auth`,
+                {
 
-            method: "POST",
+                    method: "POST",
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-            body: JSON.stringify({
-                init_data: tg.initData
-            })
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
 
-        });
+                }
+            );
 
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
-                data.detail || "Authentication failed"
+                data.detail ||
+                "Authentication failed"
             );
 
         }
 
 
-        console.log("Authenticated:", data);
+        console.log(
+            "Authenticated:",
+            data
+        );
 
 
         if (data.user) {
 
-            balance = Number(
-                data.user.balance || 0
-            );
+            balance =
+                Number(
+                    data.user.balance || 0
+                );
 
-            adsWatched = Number(
-                data.user.ads_watched || 0
-            );
+            adsWatched =
+                Number(
+                    data.user.ads_watched || 0
+                );
 
-            referrals = Number(
-                data.user.referrals || 0
-            );
+            referrals =
+                Number(
+                    data.user.referrals || 0
+                );
+
 
             updateUI();
 
@@ -138,7 +181,8 @@ async function authenticateUser() {
 
 function setTelegramProfile() {
 
-    const user = tg?.initDataUnsafe?.user;
+    const user =
+        tg?.initDataUnsafe?.user;
 
 
     if (!user) {
@@ -151,19 +195,26 @@ function setTelegramProfile() {
 
 
     const fullName =
-        `${user.first_name || ""} ${user.last_name || ""}`.trim();
+        `${user.first_name || ""} ${user.last_name || ""}`
+            .trim();
 
 
     const headerTitle =
-        document.querySelector(".header h1");
+        document.querySelector(
+            ".header h1"
+        );
 
 
     const profileName =
-        document.querySelector(".profile-card h2");
+        document.querySelector(
+            ".profile-card h2"
+        );
 
 
     const profileInfo =
-        document.querySelector(".profile-card p");
+        document.querySelector(
+            ".profile-card p"
+        );
 
 
     if (headerTitle) {
@@ -199,15 +250,21 @@ function setTelegramProfile() {
 function setGuestProfile() {
 
     const headerTitle =
-        document.querySelector(".header h1");
+        document.querySelector(
+            ".header h1"
+        );
 
 
     const profileName =
-        document.querySelector(".profile-card h2");
+        document.querySelector(
+            ".profile-card h2"
+        );
 
 
     const profileInfo =
-        document.querySelector(".profile-card p");
+        document.querySelector(
+            ".profile-card p"
+        );
 
 
     if (headerTitle) {
@@ -243,7 +300,9 @@ function setGuestProfile() {
 async function loadTasks() {
 
     const container =
-        document.getElementById("tasksContainer");
+        document.getElementById(
+            "tasksContainer"
+        );
 
 
     if (!container) {
@@ -257,17 +316,19 @@ async function loadTasks() {
     }
 
 
-    // Loading state
-
     container.innerHTML = `
 
         <div class="task">
 
             <div class="task-info">
 
-                <h3>Loading Tasks...</h3>
+                <h3>
+                    Loading Tasks...
+                </h3>
 
-                <p>Please wait...</p>
+                <p>
+                    Please wait...
+                </p>
 
             </div>
 
@@ -279,15 +340,9 @@ async function loadTasks() {
     try {
 
         const response =
-            await fetch(`${API_URL}/tasks`, {
-
-                method: "GET",
-
-                headers: {
-                    "Accept": "application/json"
-                }
-
-            });
+            await fetch(
+                `${API_URL}/tasks`
+            );
 
 
         const data =
@@ -310,8 +365,6 @@ async function loadTasks() {
         );
 
 
-        // No tasks
-
         if (
             !data.success ||
             !Array.isArray(data.tasks) ||
@@ -324,7 +377,9 @@ async function loadTasks() {
 
                     <div class="task-info">
 
-                        <h3>No tasks available</h3>
+                        <h3>
+                            No tasks available
+                        </h3>
 
                         <p>
                             New tasks will appear here.
@@ -341,115 +396,121 @@ async function loadTasks() {
         }
 
 
-        // Clear old tasks
-
         container.innerHTML = "";
 
 
-        // Render every task from API
+        data.tasks.forEach(
+            task => {
 
-        data.tasks.forEach(task => {
-
-            const taskElement =
-                document.createElement("div");
-
-
-            taskElement.className =
-                "task";
+                const taskElement =
+                    document.createElement(
+                        "div"
+                    );
 
 
-            const taskId =
-                Number(task.id);
+                taskElement.className =
+                    "task";
 
 
-            const title =
-                escapeHTML(
-                    task.title || "Untitled Task"
-                );
+                const taskId =
+                    Number(task.id);
 
 
-            const description =
-                escapeHTML(
-                    task.description || "Complete this task"
-                );
+                const title =
+                    escapeHTML(
+                        task.title ||
+                        "Untitled Task"
+                    );
 
 
-            const reward =
-                Number(task.reward || 0);
+                const description =
+                    escapeHTML(
+                        task.description ||
+                        "Complete this task"
+                    );
 
 
-            const taskType =
-                escapeHTML(
-                    task.task_type || "website"
-                );
+                const reward =
+                    Number(
+                        task.reward || 0
+                    );
 
 
-            const link =
-                String(
-                    task.link || ""
-                );
+                const taskType =
+                    escapeHTML(
+                        task.task_type ||
+                        "website"
+                    );
 
 
-            taskElement.innerHTML = `
-
-                <div class="task-icon">
-                    ${getTaskIcon(taskType)}
-                </div>
-
-                <div class="task-info">
-
-                    <h3>
-                        ${title}
-                    </h3>
-
-                    <p>
-                        ${description}
-                    </p>
-
-                    <p>
-                        +${reward} W2E
-                    </p>
-
-                </div>
-
-                <button
-                    type="button"
-                    class="task-start-btn"
-                >
-                    Start
-                </button>
-
-            `;
+                const link =
+                    String(
+                        task.link || ""
+                    );
 
 
-            const button =
-                taskElement.querySelector(
-                    ".task-start-btn"
-                );
+                taskElement.innerHTML = `
+
+                    <div class="task-icon">
+                        ${getTaskIcon(taskType)}
+                    </div>
+
+                    <div class="task-info">
+
+                        <h3>
+                            ${title}
+                        </h3>
+
+                        <p>
+                            ${description}
+                        </p>
+
+                        <p>
+                            +${reward} W2E
+                        </p>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="task-start-btn"
+                    >
+                        Start
+                    </button>
+
+                `;
 
 
-            if (button) {
+                const button =
+                    taskElement.querySelector(
+                        ".task-start-btn"
+                    );
 
-                button.addEventListener(
-                    "click",
-                    () => {
 
-                        startTask(
-                            taskId,
-                            link
-                        );
+                if (button) {
 
-                    }
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            startTask(
+                                taskId,
+                                link,
+                                button
+                            );
+
+                        }
+                    );
+
+                }
+
+
+                container.appendChild(
+                    taskElement
                 );
 
             }
-
-
-            container.appendChild(
-                taskElement
-            );
-
-        });
+        );
 
 
     } catch (error) {
@@ -530,15 +591,30 @@ function escapeHTML(value) {
 
     return String(value)
 
-        .replaceAll("&", "&amp;")
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
 
-        .replaceAll("<", "&lt;")
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
 
-        .replaceAll(">", "&gt;")
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
 
-        .replaceAll('"', "&quot;")
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
 
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 
 }
 
@@ -547,12 +623,16 @@ function escapeHTML(value) {
 // Start Task
 // ===============================
 
-function startTask(taskId, link) {
+async function startTask(
+    taskId,
+    link,
+    button
+) {
 
-    if (!link) {
+    if (!tg || !tg.initData) {
 
         alert(
-            "This task does not have a link."
+            "Please open Watch2Earn from Telegram."
         );
 
         return;
@@ -560,21 +640,223 @@ function startTask(taskId, link) {
     }
 
 
-    console.log(
-        "Starting task:",
-        taskId
+    if (!taskId) {
+
+        alert(
+            "Invalid task."
+        );
+
+        return;
+
+    }
+
+
+    // Prevent double click
+
+    if (
+        button &&
+        button.disabled
+    ) {
+
+        return;
+
+    }
+
+
+    if (button) {
+
+        button.disabled = true;
+
+        button.textContent =
+            "Opening...";
+
+    }
+
+
+    // -------------------------
+    // Open Task Link
+    // -------------------------
+
+    if (link) {
+
+        try {
+
+            if (
+                tg &&
+                typeof tg.openLink ===
+                    "function"
+            ) {
+
+                tg.openLink(link);
+
+            } else {
+
+                window.open(
+                    link,
+                    "_blank"
+                );
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Open link error:",
+                error
+            );
+
+        }
+
+    }
+
+
+    // -------------------------
+    // Wait Before Completion
+    // -------------------------
+
+    if (button) {
+
+        button.textContent =
+            "Checking...";
+
+    }
+
+
+    await new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                2000
+            )
     );
 
 
-    if (tg && tg.openLink) {
+    // -------------------------
+    // Complete Task
+    // -------------------------
 
-        tg.openLink(link);
+    try {
 
-    } else {
+        const response =
+            await fetch(
+                `${API_URL}/tasks/${taskId}/complete`,
+                {
 
-        window.open(
-            link,
-            "_blank"
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Task completion failed"
+            );
+
+        }
+
+
+        // -------------------------
+        // Already Completed
+        // -------------------------
+
+        if (!data.success) {
+
+            if (button) {
+
+                button.textContent =
+                    "Completed";
+
+                button.disabled =
+                    true;
+
+            }
+
+
+            if (
+                data.message ===
+                "Task already completed"
+            ) {
+
+                alert(
+                    "You already completed this task."
+                );
+
+            }
+
+            return;
+
+        }
+
+
+        // -------------------------
+        // Reward Success
+        // -------------------------
+
+        balance =
+            Number(
+                data.balance || 0
+            );
+
+
+        updateUI();
+
+
+        if (button) {
+
+            button.textContent =
+                "Completed";
+
+            button.disabled =
+                true;
+
+        }
+
+
+        alert(
+            `🎉 Task completed!\n\n` +
+            `+${data.reward} W2E earned!`
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Task completion error:",
+            error
+        );
+
+
+        if (button) {
+
+            button.disabled =
+                false;
+
+            button.textContent =
+                "Start";
+
+        }
+
+
+        alert(
+            "Unable to complete task.\n" +
+            "Please try again."
         );
 
     }
@@ -615,7 +897,9 @@ async function dailyBonus() {
 
 
     const button =
-        document.getElementById("bonusBtn");
+        document.getElementById(
+            "bonusBtn"
+        );
 
 
     if (!button || button.disabled) {
@@ -627,7 +911,8 @@ async function dailyBonus() {
 
     button.disabled = true;
 
-    button.textContent = "Checking...";
+    button.textContent =
+        "Checking...";
 
 
     try {
@@ -687,7 +972,9 @@ async function dailyBonus() {
 
 
         balance =
-            Number(data.balance || 0);
+            Number(
+                data.balance || 0
+            );
 
 
         updateUI();
@@ -718,7 +1005,8 @@ async function dailyBonus() {
 
         button.disabled = false;
 
-        button.textContent = "Claim";
+        button.textContent =
+            "Claim";
 
     }
 
@@ -894,7 +1182,9 @@ function showPage(pageId) {
 
 
     const index =
-        pages.indexOf(pageId);
+        pages.indexOf(
+            pageId
+        );
 
 
     if (
@@ -905,6 +1195,18 @@ function showPage(pageId) {
         buttons[index].classList.add(
             "active"
         );
+
+    }
+
+
+    // Reload tasks whenever
+    // Tasks page is opened
+
+    if (
+        pageId === "tasks"
+    ) {
+
+        loadTasks();
 
     }
 
@@ -920,4 +1222,3 @@ updateUI();
 authenticateUser();
 
 loadTasks();
-```
