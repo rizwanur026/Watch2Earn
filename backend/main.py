@@ -581,7 +581,6 @@ def create_task(task: TaskCreate):
         "task": dict(new_task)
     }
 
-```python
 # =========================
 # Complete Task
 # =========================
@@ -839,4 +838,3 @@ def complete_task(
 
         cursor.close()
         connection.close()
-```
