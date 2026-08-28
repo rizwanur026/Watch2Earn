@@ -842,14 +842,73 @@ async function completeTask(
 // Watch Ad
 // ===============================
 
-function watchAd() {
+async function watchAd() {
 
-    alert(
-        "Demo Ad\n\n" +
-        "Real advertisement integration " +
-        "will be added later."
-    );
+    if (!tg || !tg.initData) {
 
+        alert("Please open Watch2Earn from Telegram.");
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/watch-ad`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    init_data: tg.initData
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail || "Unable to watch ad"
+            );
+        }
+
+        if (!data.success) {
+
+            alert(
+                data.message || "Ad reward failed."
+            );
+
+            return;
+        }
+
+        balance = Number(data.balance || 0);
+
+        adsWatched = Number(
+            data.ads_watched || 0
+        );
+
+        updateUI();
+
+        alert(
+            `+${data.reward} W2E earned!`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Watch ad error:",
+            error
+        );
+
+        alert(
+            "Unable to give ad reward. Please try again."
+        );
+    }
 }
 
 
