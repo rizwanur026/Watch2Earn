@@ -306,8 +306,37 @@ from datetime import datetime, timezone
 DAILY_BONUS = 100
 
 
-@app.post("/daily-bonus/{telegram_id}")
-def claim_daily_bonus(telegram_id: int):
+@app.post("/daily-bonus")
+def claim_daily_bonus(auth: TelegramAuth):
+
+    # Verify Telegram Mini App data
+    data = verify_telegram_init_data(
+        auth.init_data
+    )
+
+    if "user" not in data:
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram user missing"
+        )
+
+    try:
+        telegram_user = json.loads(
+            data["user"]
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user data"
+        )
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -333,7 +362,7 @@ def claim_daily_bonus(telegram_id: int):
             detail="User not found"
         )
 
-    # Check previous claim
+    # Check previous daily claim
     cursor.execute(
         """
         SELECT *
@@ -347,12 +376,10 @@ def claim_daily_bonus(telegram_id: int):
 
     now = datetime.now(timezone.utc)
 
-
     if claim and claim["last_claim"]:
 
         last_claim = claim["last_claim"]
 
-        # Make timestamp timezone-aware if needed
         if last_claim.tzinfo is None:
             last_claim = last_claim.replace(
                 tzinfo=timezone.utc
@@ -362,9 +389,15 @@ def claim_daily_bonus(telegram_id: int):
 
         if elapsed.total_seconds() < 86400:
 
-            remaining = 86400 - elapsed.total_seconds()
+            remaining = (
+                86400 -
+                elapsed.total_seconds()
+            )
 
-            hours = int(remaining // 3600)
+            hours = int(
+                remaining // 3600
+            )
+
             minutes = int(
                 (remaining % 3600) // 60
             )
@@ -379,7 +412,6 @@ def claim_daily_bonus(telegram_id: int):
                 "remaining_minutes": minutes
             }
 
-
     # Add reward
     cursor.execute(
         """
@@ -393,8 +425,7 @@ def claim_daily_bonus(telegram_id: int):
         )
     )
 
-
-    # Record transaction
+    # Save transaction
     cursor.execute(
         """
         INSERT INTO reward_transactions
@@ -412,8 +443,7 @@ def claim_daily_bonus(telegram_id: int):
         )
     )
 
-
-    # Update daily claim
+    # Save daily claim
     cursor.execute(
         """
         INSERT INTO daily_claims
@@ -433,9 +463,7 @@ def claim_daily_bonus(telegram_id: int):
         )
     )
 
-
     connection.commit()
-
 
     # Get updated balance
     cursor.execute(
@@ -449,10 +477,8 @@ def claim_daily_bonus(telegram_id: int):
 
     updated_user = cursor.fetchone()
 
-
     cursor.close()
     connection.close()
-
 
     return {
         "success": True,
