@@ -580,6 +580,8 @@ def create_task(task: TaskCreate):
         "success": True,
         "task": dict(new_task)
     }
+
+```python
 # =========================
 # Complete Task
 # =========================
@@ -624,8 +626,7 @@ def complete_task(
         )
 
 
-    telegram_id =
-        telegram_user.get("id")
+    telegram_id = telegram_user.get("id")
 
 
     if not telegram_id:
@@ -637,199 +638,205 @@ def complete_task(
 
 
     # -------------------------
-    # Database
+    # Database Connection
     # -------------------------
 
     connection = get_connection()
     cursor = connection.cursor()
 
 
-    # -------------------------
-    # Find task
-    # -------------------------
+    try:
 
-    cursor.execute(
-        """
-        SELECT *
-        FROM tasks
-        WHERE id = %s
-        AND status = TRUE
-        """,
-        (task_id,)
-    )
+        # -------------------------
+        # Find Task
+        # -------------------------
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM tasks
+            WHERE id = %s
+            AND status = TRUE
+            """,
+            (task_id,)
+        )
+
+        task = cursor.fetchone()
 
 
-    task = cursor.fetchone()
+        if not task:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found"
+            )
 
 
-    if not task:
+        # -------------------------
+        # Find User
+        # -------------------------
 
-        cursor.close()
-        connection.close()
+        cursor.execute(
+            """
+            SELECT *
+            FROM users
+            WHERE telegram_id = %s
+            """,
+            (telegram_id,)
+        )
 
-        raise HTTPException(
-            status_code=404,
-            detail="Task not found"
+        user = cursor.fetchone()
+
+
+        if not user:
+
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+
+        # -------------------------
+        # Check Completion
+        # -------------------------
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM task_completions
+            WHERE telegram_id = %s
+            AND task_id = %s
+            """,
+            (
+                telegram_id,
+                task_id
+            )
+        )
+
+        completed = cursor.fetchone()
+
+
+        if completed:
+
+            return {
+                "success": False,
+                "message": "Task already completed"
+            }
+
+
+        # -------------------------
+        # Add Reward
+        # -------------------------
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET balance = balance + %s
+            WHERE telegram_id = %s
+            """,
+            (
+                task["reward"],
+                telegram_id
+            )
         )
 
 
-    # -------------------------
-    # Check user
-    # -------------------------
+        # -------------------------
+        # Record Completion
+        # -------------------------
 
-    cursor.execute(
-        """
-        SELECT *
-        FROM users
-        WHERE telegram_id = %s
-        """,
-        (telegram_id,)
-    )
-
-
-    user = cursor.fetchone()
-
-
-    if not user:
-
-        cursor.close()
-        connection.close()
-
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
+        cursor.execute(
+            """
+            INSERT INTO task_completions
+            (
+                telegram_id,
+                task_id
+            )
+            VALUES (%s, %s)
+            """,
+            (
+                telegram_id,
+                task_id
+            )
         )
 
 
-    # -------------------------
-    # Check completion
-    # -------------------------
+        # -------------------------
+        # Record Transaction
+        # -------------------------
 
-    cursor.execute(
-        """
-        SELECT id
-        FROM task_completions
-        WHERE telegram_id = %s
-        AND task_id = %s
-        """,
-        (
-            telegram_id,
-            str(task_id)
+        cursor.execute(
+            """
+            INSERT INTO reward_transactions
+            (
+                telegram_id,
+                reward_type,
+                amount
+            )
+            VALUES (%s, %s, %s)
+            """,
+            (
+                telegram_id,
+                "task",
+                task["reward"]
+            )
         )
-    )
 
 
-    completed =
-        cursor.fetchone()
+        # -------------------------
+        # Commit
+        # -------------------------
+
+        connection.commit()
 
 
-    if completed:
+        # -------------------------
+        # Get Updated Balance
+        # -------------------------
 
-        cursor.close()
-        connection.close()
+        cursor.execute(
+            """
+            SELECT balance
+            FROM users
+            WHERE telegram_id = %s
+            """,
+            (telegram_id,)
+        )
+
+        updated_user = cursor.fetchone()
+
 
         return {
-
-            "success": False,
-
-            "message":
-                "Task already completed"
-
+            "success": True,
+            "reward": task["reward"],
+            "balance": updated_user["balance"]
         }
 
 
-    # -------------------------
-    # Add reward
-    # -------------------------
+    except HTTPException:
 
-    cursor.execute(
-        """
-        UPDATE users
-        SET balance = balance + %s
-        WHERE telegram_id = %s
-        """,
-        (
-            task["reward"],
-            telegram_id
+        connection.rollback()
+
+        raise
+
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "Task completion error:",
+            error
         )
-    )
 
-
-    # -------------------------
-    # Record completion
-    # -------------------------
-
-    cursor.execute(
-        """
-        INSERT INTO task_completions
-        (
-            telegram_id,
-            task_id
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to complete task"
         )
-        VALUES (%s, %s)
-        """,
-        (
-            telegram_id,
-            str(task_id)
-        )
-    )
 
 
-    # -------------------------
-    # Record transaction
-    # -------------------------
+    finally:
 
-    cursor.execute(
-        """
-        INSERT INTO reward_transactions
-        (
-            telegram_id,
-            reward_type,
-            amount
-        )
-        VALUES (%s, %s, %s)
-        """,
-        (
-            telegram_id,
-            "task",
-            task["reward"]
-        )
-    )
-
-
-    connection.commit()
-
-
-    # -------------------------
-    # Get new balance
-    # -------------------------
-
-    cursor.execute(
-        """
-        SELECT balance
-        FROM users
-        WHERE telegram_id = %s
-        """,
-        (telegram_id,)
-    )
-
-
-    updated_user =
-        cursor.fetchone()
-
-
-    cursor.close()
-    connection.close()
-
-
-    return {
-
-        "success": True,
-
-        "reward":
-            task["reward"],
-
-        "balance":
-            updated_user["balance"]
-
-    }
+        cursor.close()
+        connection.close()
+```
