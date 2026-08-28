@@ -852,3 +852,120 @@ def complete_task(
 
         cursor.close()
         connection.close()
+
+# =========================
+# Watch Ad Reward
+# =========================
+
+class AdReward(BaseModel):
+    init_data: str
+
+
+@app.post("/watch-ad")
+def watch_ad(auth: AdReward):
+
+    data = verify_telegram_init_data(
+        auth.init_data
+    )
+
+    if "user" not in data:
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram user missing"
+        )
+
+    try:
+        telegram_user = json.loads(
+            data["user"]
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user"
+        )
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        reward = 50
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET balance = balance + %s,
+                ads_watched = ads_watched + 1
+            WHERE telegram_id = %s
+            RETURNING balance, ads_watched
+            """,
+            (
+                reward,
+                telegram_id
+            )
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        cursor.execute(
+            """
+            INSERT INTO reward_transactions
+            (
+                telegram_id,
+                reward_type,
+                amount
+            )
+            VALUES (%s, %s, %s)
+            """,
+            (
+                telegram_id,
+                "watch_ad",
+                reward
+            )
+        )
+
+        connection.commit()
+
+        return {
+            "success": True,
+            "reward": reward,
+            "balance": user["balance"],
+            "ads_watched": user["ads_watched"]
+        }
+
+    except HTTPException:
+        connection.rollback()
+        raise
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "Watch ad reward error:",
+            error
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to give ad reward"
+        )
+
+    finally:
+
+        cursor.close()
+        connection.close()
