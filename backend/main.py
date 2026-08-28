@@ -520,3 +520,63 @@ def get_tasks():
         "success": True,
         "tasks": [dict(task) for task in tasks]
     }
+
+
+# =========================
+# Admin - Add Task
+# =========================
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str = ""
+    task_type: str
+    link: str = ""
+    reward: int
+
+
+@app.post("/admin/tasks")
+def create_task(task: TaskCreate):
+
+    if task.reward <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Reward must be greater than 0"
+        )
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO tasks
+        (
+            title,
+            description,
+            task_type,
+            link,
+            reward,
+            status
+        )
+        VALUES (%s, %s, %s, %s, %s, TRUE)
+        RETURNING *
+        """,
+        (
+            task.title,
+            task.description,
+            task.task_type,
+            task.link,
+            task.reward
+        )
+    )
+
+    new_task = cursor.fetchone()
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+    return {
+        "success": True,
+        "task": dict(new_task)
+    }
