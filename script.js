@@ -582,11 +582,16 @@ function escapeHTML(value) {
 // Start Task
 // ===============================
 
-function startTask(
-    taskId,
-    link,
-    button
-) {
+async function startTask(taskId, link) {
+
+    if (!tg || !tg.initData) {
+
+        alert(
+            "Please open Watch2Earn from Telegram."
+        );
+
+        return;
+    }
 
     if (!link) {
 
@@ -595,83 +600,99 @@ function startTask(
         );
 
         return;
-
     }
 
+    try {
 
-    if (
-        button.dataset.started === "true"
-    ) {
+        if (tg.openLink) {
 
-        return;
+            tg.openLink(link);
 
-    }
+        } else {
 
+            window.open(
+                link,
+                "_blank"
+            );
 
-    button.dataset.started =
-        "true";
+        }
 
+        const completed =
+            confirm(
+                "Did you complete this task?"
+            );
 
-    button.textContent =
-        "Opened";
+        if (!completed) {
+            return;
+        }
 
+        const response =
+            await fetch(
+                `${API_URL}/tasks/${taskId}/complete`,
+                {
+                    method: "POST",
 
-    button.disabled =
-        true;
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
+                }
+            );
 
-    // Save task ID
-    sessionStorage.setItem(
-        `task_started_${taskId}`,
-        "true"
-    );
+        const data =
+            await response.json();
 
+        if (!response.ok) {
 
-    console.log(
-        "Starting task:",
-        taskId
-    );
+            throw new Error(
+                data.detail ||
+                "Task completion failed"
+            );
+        }
 
+        if (!data.success) {
 
-    if (
-        tg &&
-        typeof tg.openLink === "function"
-    ) {
+            alert(
+                data.message ||
+                "Task already completed."
+            );
 
-        tg.openLink(link);
+            return;
+        }
 
-    } else {
+        balance =
+            Number(
+                data.balance || 0
+            );
 
-        window.open(
-            link,
-            "_blank"
+        updateUI();
+
+        alert(
+            `Task completed!\n\n` +
+            `+${data.reward} W2E earned!`
+        );
+
+        loadTasks();
+
+    } catch (error) {
+
+        console.error(
+            "Task completion error:",
+            error
+        );
+
+        alert(
+            "Unable to complete task. Please try again."
         );
 
     }
 
-
-    // Show Complete button
-    setTimeout(() => {
-
-        button.disabled =
-            false;
-
-        button.textContent =
-            "Complete";
-
-        button.onclick = () => {
-
-            completeTask(
-                taskId,
-                button
-            );
-
-        };
-
-    }, 1500);
-
 }
-
 
 // ===============================
 // Complete Task
