@@ -485,3 +485,38 @@ def claim_daily_bonus(auth: TelegramAuth):
         "reward": DAILY_BONUS,
         "balance": updated_user["balance"]
     }
+
+# =========================
+# Tasks API
+# =========================
+
+@app.get("/tasks")
+def get_tasks():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            title,
+            description,
+            task_type,
+            link,
+            reward
+        FROM tasks
+        WHERE status = TRUE
+        ORDER BY id DESC
+        """
+    )
+
+    tasks = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return {
+        "success": True,
+        "tasks": [dict(task) for task in tasks]
+    }
