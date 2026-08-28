@@ -1,10 +1,9 @@
+```javascript
 // ===============================
 // Watch2Earn Frontend
 // ===============================
 
-const API_URL =
-    "https://watch2earn-lp3w.onrender.com";
-
+const API_URL = "https://watch2earn-lp3w.onrender.com";
 
 let balance = 0;
 let adsWatched = 0;
@@ -15,16 +14,11 @@ let referrals = 0;
 // Telegram WebApp
 // ===============================
 
-const tg =
-    window.Telegram?.WebApp;
-
+const tg = window.Telegram?.WebApp;
 
 if (tg) {
-
     tg.ready();
-
     tg.expand();
-
 }
 
 
@@ -34,40 +28,25 @@ if (tg) {
 
 function updateUI() {
 
-    document.getElementById(
-        "balance"
-    ).textContent = balance;
+    const elements = {
+        balance: balance,
+        adsWatched: adsWatched,
+        refCount: referrals,
+        leaderBalance: balance,
+        profileCoins: balance,
+        profileAds: adsWatched,
+        profileRefs: referrals
+    };
 
+    Object.entries(elements).forEach(([id, value]) => {
 
-    document.getElementById(
-        "adsWatched"
-    ).textContent = adsWatched;
+        const element = document.getElementById(id);
 
+        if (element) {
+            element.textContent = value;
+        }
 
-    document.getElementById(
-        "refCount"
-    ).textContent = referrals;
-
-
-    document.getElementById(
-        "leaderBalance"
-    ).textContent = balance;
-
-
-    document.getElementById(
-        "profileCoins"
-    ).textContent = balance;
-
-
-    document.getElementById(
-        "profileAds"
-    ).textContent = adsWatched;
-
-
-    document.getElementById(
-        "profileRefs"
-    ).textContent = referrals;
-
+    });
 }
 
 
@@ -77,102 +56,60 @@ function updateUI() {
 
 async function authenticateUser() {
 
-    if (!tg) {
+    if (!tg || !tg.initData) {
 
-        console.log(
-            "Telegram WebApp not detected"
-        );
+        console.log("Telegram WebApp not detected.");
 
         setGuestProfile();
 
         return;
-
     }
-
-
-    const initData =
-        tg.initData;
-
-
-    if (!initData) {
-
-        console.log(
-            "Telegram initData not available"
-        );
-
-        setGuestProfile();
-
-        return;
-
-    }
-
 
     try {
 
-        const response =
-            await fetch(
-                `${API_URL}/auth`,
-                {
+        const response = await fetch(`${API_URL}/auth`, {
 
-                    method: "POST",
+            method: "POST",
 
-                    headers: {
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-                        "Content-Type":
-                            "application/json"
+            body: JSON.stringify({
+                init_data: tg.initData
+            })
 
-                    },
-
-                    body: JSON.stringify({
-
-                        init_data:
-                            initData
-
-                    })
-
-                }
-            );
+        });
 
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
-                data.detail ||
-                "Authentication failed"
+                data.detail || "Authentication failed"
             );
 
         }
 
 
-        console.log(
-            "Authenticated:",
-            data
-        );
+        console.log("Authenticated:", data);
 
 
         if (data.user) {
 
-            balance =
-                Number(
-                    data.user.balance || 0
-                );
+            balance = Number(
+                data.user.balance || 0
+            );
 
+            adsWatched = Number(
+                data.user.ads_watched || 0
+            );
 
-            adsWatched =
-                Number(
-                    data.user.ads_watched || 0
-                );
-
-
-            referrals =
-                Number(
-                    data.user.referrals || 0
-                );
-
+            referrals = Number(
+                data.user.referrals || 0
+            );
 
             updateUI();
 
@@ -188,6 +125,8 @@ async function authenticateUser() {
             error
         );
 
+        setGuestProfile();
+
     }
 
 }
@@ -199,8 +138,7 @@ async function authenticateUser() {
 
 function setTelegramProfile() {
 
-    const user =
-        tg?.initDataUnsafe?.user;
+    const user = tg?.initDataUnsafe?.user;
 
 
     if (!user) {
@@ -213,26 +151,19 @@ function setTelegramProfile() {
 
 
     const fullName =
-        `${user.first_name || ""} ${user.last_name || ""}`
-        .trim();
+        `${user.first_name || ""} ${user.last_name || ""}`.trim();
 
 
     const headerTitle =
-        document.querySelector(
-            ".header h1"
-        );
+        document.querySelector(".header h1");
 
 
     const profileName =
-        document.querySelector(
-            ".profile-card h2"
-        );
+        document.querySelector(".profile-card h2");
 
 
     const profileInfo =
-        document.querySelector(
-            ".profile-card p"
-        );
+        document.querySelector(".profile-card p");
 
 
     if (headerTitle) {
@@ -268,21 +199,15 @@ function setTelegramProfile() {
 function setGuestProfile() {
 
     const headerTitle =
-        document.querySelector(
-            ".header h1"
-        );
+        document.querySelector(".header h1");
 
 
     const profileName =
-        document.querySelector(
-            ".profile-card h2"
-        );
+        document.querySelector(".profile-card h2");
 
 
     const profileInfo =
-        document.querySelector(
-            ".profile-card p"
-        );
+        document.querySelector(".profile-card p");
 
 
     if (headerTitle) {
@@ -318,17 +243,21 @@ function setGuestProfile() {
 async function loadTasks() {
 
     const container =
-        document.getElementById(
-            "tasksContainer"
-        );
+        document.getElementById("tasksContainer");
 
 
     if (!container) {
+
+        console.warn(
+            "tasksContainer not found."
+        );
 
         return;
 
     }
 
+
+    // Loading state
 
     container.innerHTML = `
 
@@ -336,13 +265,9 @@ async function loadTasks() {
 
             <div class="task-info">
 
-                <h3>
-                    Loading Tasks...
-                </h3>
+                <h3>Loading Tasks...</h3>
 
-                <p>
-                    Please wait
-                </p>
+                <p>Please wait...</p>
 
             </div>
 
@@ -354,9 +279,15 @@ async function loadTasks() {
     try {
 
         const response =
-            await fetch(
-                `${API_URL}/tasks`
-            );
+            await fetch(`${API_URL}/tasks`, {
+
+                method: "GET",
+
+                headers: {
+                    "Accept": "application/json"
+                }
+
+            });
 
 
         const data =
@@ -373,8 +304,17 @@ async function loadTasks() {
         }
 
 
+        console.log(
+            "Tasks received:",
+            data.tasks
+        );
+
+
+        // No tasks
+
         if (
-            !data.tasks ||
+            !data.success ||
+            !Array.isArray(data.tasks) ||
             data.tasks.length === 0
         ) {
 
@@ -384,9 +324,7 @@ async function loadTasks() {
 
                     <div class="task-info">
 
-                        <h3>
-                            No tasks available
-                        </h3>
+                        <h3>No tasks available</h3>
 
                         <p>
                             New tasks will appear here.
@@ -403,64 +341,115 @@ async function loadTasks() {
         }
 
 
+        // Clear old tasks
+
         container.innerHTML = "";
 
 
-        data.tasks.forEach(
-            task => {
+        // Render every task from API
 
-                const taskElement =
-                    document.createElement(
-                        "div"
-                    );
+        data.tasks.forEach(task => {
 
-
-                taskElement.className =
-                    "task";
+            const taskElement =
+                document.createElement("div");
 
 
-                taskElement.innerHTML = `
-
-                    <div class="task-icon">
-                        ${getTaskIcon(task.task_type)}
-                    </div>
-
-                    <div class="task-info">
-
-                        <h3>
-                            ${escapeHTML(task.title)}
-                        </h3>
-
-                        <p>
-                            ${escapeHTML(
-                                task.description || ""
-                            )}
-                        </p>
-
-                        <p>
-                            +${task.reward} W2E
-                        </p>
-
-                    </div>
-
-                    <button
-                        onclick="startTask(
-                            ${task.id},
-                            '${escapeAttribute(task.link || "")}'
-                        )"
-                    >
-                        Start
-                    </button>
-
-                `;
+            taskElement.className =
+                "task";
 
 
-                container.appendChild(
-                    taskElement
+            const taskId =
+                Number(task.id);
+
+
+            const title =
+                escapeHTML(
+                    task.title || "Untitled Task"
+                );
+
+
+            const description =
+                escapeHTML(
+                    task.description || "Complete this task"
+                );
+
+
+            const reward =
+                Number(task.reward || 0);
+
+
+            const taskType =
+                escapeHTML(
+                    task.task_type || "website"
+                );
+
+
+            const link =
+                String(
+                    task.link || ""
+                );
+
+
+            taskElement.innerHTML = `
+
+                <div class="task-icon">
+                    ${getTaskIcon(taskType)}
+                </div>
+
+                <div class="task-info">
+
+                    <h3>
+                        ${title}
+                    </h3>
+
+                    <p>
+                        ${description}
+                    </p>
+
+                    <p>
+                        +${reward} W2E
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="task-start-btn"
+                >
+                    Start
+                </button>
+
+            `;
+
+
+            const button =
+                taskElement.querySelector(
+                    ".task-start-btn"
+                );
+
+
+            if (button) {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        startTask(
+                            taskId,
+                            link
+                        );
+
+                    }
                 );
 
             }
-        );
+
+
+            container.appendChild(
+                taskElement
+            );
+
+        });
 
 
     } catch (error) {
@@ -484,6 +473,13 @@ async function loadTasks() {
                     <p>
                         Please try again later.
                     </p>
+
+                    <button
+                        type="button"
+                        onclick="loadTasks()"
+                    >
+                        Retry
+                    </button>
 
                 </div>
 
@@ -533,21 +529,16 @@ function getTaskIcon(type) {
 function escapeHTML(value) {
 
     return String(value)
+
         .replaceAll("&", "&amp;")
+
         .replaceAll("<", "&lt;")
+
         .replaceAll(">", "&gt;")
+
         .replaceAll('"', "&quot;")
+
         .replaceAll("'", "&#039;");
-
-}
-
-
-function escapeAttribute(value) {
-
-    return String(value)
-        .replaceAll("\\", "\\\\")
-        .replaceAll("'", "\\'")
-        .replaceAll("\n", "");
 
 }
 
@@ -556,10 +547,7 @@ function escapeAttribute(value) {
 // Start Task
 // ===============================
 
-function startTask(
-    taskId,
-    link
-) {
+function startTask(taskId, link) {
 
     if (!link) {
 
@@ -572,10 +560,13 @@ function startTask(
     }
 
 
-    if (
-        tg &&
-        tg.openLink
-    ) {
+    console.log(
+        "Starting task:",
+        taskId
+    );
+
+
+    if (tg && tg.openLink) {
 
         tg.openLink(link);
 
@@ -587,12 +578,6 @@ function startTask(
         );
 
     }
-
-
-    console.log(
-        "Started task:",
-        taskId
-    );
 
 }
 
@@ -618,10 +603,7 @@ function watchAd() {
 
 async function dailyBonus() {
 
-    if (
-        !tg ||
-        !tg.initData
-    ) {
+    if (!tg || !tg.initData) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -633,15 +615,10 @@ async function dailyBonus() {
 
 
     const button =
-        document.getElementById(
-            "bonusBtn"
-        );
+        document.getElementById("bonusBtn");
 
 
-    if (
-        !button ||
-        button.disabled
-    ) {
+    if (!button || button.disabled) {
 
         return;
 
@@ -650,8 +627,7 @@ async function dailyBonus() {
 
     button.disabled = true;
 
-    button.textContent =
-        "Checking...";
+    button.textContent = "Checking...";
 
 
     try {
@@ -664,17 +640,13 @@ async function dailyBonus() {
                     method: "POST",
 
                     headers: {
-
                         "Content-Type":
                             "application/json"
-
                     },
 
                     body: JSON.stringify({
-
                         init_data:
                             tg.initData
-
                     })
 
                 }
@@ -715,9 +687,7 @@ async function dailyBonus() {
 
 
         balance =
-            Number(
-                data.balance
-            );
+            Number(data.balance || 0);
 
 
         updateUI();
@@ -746,12 +716,9 @@ async function dailyBonus() {
         );
 
 
-        button.disabled =
-            false;
+        button.disabled = false;
 
-
-        button.textContent =
-            "Claim";
+        button.textContent = "Claim";
 
     }
 
@@ -783,22 +750,33 @@ function copyReferral() {
         `https://t.me/Watch2EarnBot?start=${user.id}`;
 
 
-    navigator.clipboard
-        .writeText(link)
-        .then(() => {
+    if (
+        navigator.clipboard &&
+        navigator.clipboard.writeText
+    ) {
 
-            alert(
-                "Referral link copied!"
-            );
+        navigator.clipboard
+            .writeText(link)
+            .then(() => {
 
-        })
-        .catch(() => {
+                alert(
+                    "Referral link copied!"
+                );
 
-            alert(
-                "Unable to copy referral link."
-            );
+            })
+            .catch(() => {
 
-        });
+                alert(
+                    "Unable to copy referral link."
+                );
+
+            });
+
+    } else {
+
+        alert(link);
+
+    }
 
 }
 
@@ -809,10 +787,18 @@ function copyReferral() {
 
 function connectWallet() {
 
-    document.getElementById(
-        "walletStatus"
-    ).textContent =
-        "TON Wallet integration coming next.";
+    const walletStatus =
+        document.getElementById(
+            "walletStatus"
+        );
+
+
+    if (walletStatus) {
+
+        walletStatus.textContent =
+            "TON Wallet integration coming next.";
+
+    }
 
 
     alert(
@@ -854,15 +840,13 @@ function showPage(pageId) {
 
     document
         .querySelectorAll(".page")
-        .forEach(
-            page => {
+        .forEach(page => {
 
-                page.classList.remove(
-                    "active"
-                );
+            page.classList.remove(
+                "active"
+            );
 
-            }
-        );
+        });
 
 
     const selectedPage =
@@ -882,29 +866,22 @@ function showPage(pageId) {
 
     document
         .querySelectorAll(".nav-btn")
-        .forEach(
-            btn => {
+        .forEach(btn => {
 
-                btn.classList.remove(
-                    "active"
-                );
+            btn.classList.remove(
+                "active"
+            );
 
-            }
-        );
+        });
 
 
     const pages = [
 
         "home",
-
         "tasks",
-
         "games",
-
         "leaderboard",
-
         "wallet",
-
         "profile"
 
     ];
@@ -917,9 +894,7 @@ function showPage(pageId) {
 
 
     const index =
-        pages.indexOf(
-            pageId
-        );
+        pages.indexOf(pageId);
 
 
     if (
@@ -945,3 +920,4 @@ updateUI();
 authenticateUser();
 
 loadTasks();
+```
