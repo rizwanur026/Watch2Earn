@@ -1,354 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Watch2Earn</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
 </head>
+
 
 <body>
 
-    <div class="app">
+<div class="app">
 
-        <!-- Header -->
-        <header class="header">
-            <div>
-                <p class="small-text">Welcome back</p>
-                <h1>Watch2Earn</h1>
-            </div>
 
-            <div class="avatar">W</div>
-        </header>
+    <!-- Header -->
 
-        <!-- Balance -->
-        <section class="balance-card">
-            <div class="balance-label">YOUR BALANCE</div>
+    <header class="header">
 
-            <div class="balance">
-                <span id="balance">0</span>
-                <span class="coin">W2E</span>
-            </div>
+        <div>
 
-            <div class="balance-sub">
-                Available Coins
-            </div>
-        </section>
+            <p class="small-text">
+                Welcome back
+            </p>
 
-        <!-- Watch Ad -->
-        <section class="watch-card">
-            <div class="watch-icon">▶</div>
-
-            <div class="watch-content">
-                <h2>Watch & Earn</h2>
-                <p>Watch an ad and earn coins</p>
-            </div>
-
-            <button onclick="watchAd()">Watch</button>
-        </section>
-
-        <!-- Quick Stats -->
-        <div class="stats">
-
-            <div class="stat">
-                <span>🎬</span>
-                <strong id="adsWatched">0</strong>
-                <small>Ads Watched</small>
-            </div>
-
-            <div class="stat">
-                <span>🎁</span>
-                <strong id="dailyStatus">Ready</strong>
-                <small>Daily Bonus</small>
-            </div>
-
-            <div class="stat">
-                <span>👥</span>
-                <strong id="refCount">0</strong>
-                <small>Referrals</small>
-            </div>
+            <h1>
+                Watch2Earn
+            </h1>
 
         </div>
 
-        <!-- Pages -->
 
-        <main>
+        <div class="avatar">
+            W
+        </div>
 
-            <!-- Home -->
-            <section id="home" class="page active">
+    </header>
 
-                <h2 class="section-title">Daily Rewards</h2>
 
-                <div class="reward-card">
-                    <div>
-                        <h3>Daily Bonus</h3>
-                        <p>Claim your daily reward</p>
-                    </div>
 
-                    <button onclick="dailyBonus()" id="bonusBtn">
-                        Claim
-                    </button>
-                </div>
+    <!-- Balance -->
 
-            </section>
+    <section class="balance-card">
 
+        <div class="balance-label">
+            YOUR BALANCE
+        </div>
 
-            <!-- Tasks -->
-            <section id="tasks" class="page">
 
-                <h2 class="section-title">Tasks</h2>
+        <div class="balance">
 
-                <div class="task">
-                    <div class="task-icon">📢</div>
+            <span id="balance">
+                0
+            </span>
 
-                    <div class="task-info">
-                        <h3>Join Telegram</h3>
-                        <p>+100 W2E</p>
-                    </div>
+            <span class="coin">
+                W2E
+            </span>
 
-                    <button onclick="completeTask(this,100)">
-                        Start
-                    </button>
-                </div>
+        </div>
 
-                <div class="task">
-                    <div class="task-icon">🌐</div>
 
-                    <div class="task-info">
-                        <h3>Visit Website</h3>
-                        <p>+50 W2E</p>
-                    </div>
+        <div class="balance-sub">
+            Available Coins
+        </div>
 
-                    <button onclick="completeTask(this,50)">
-                        Start
-                    </button>
-                </div>
+    </section>
 
-                <div class="task">
-                    <div class="task-icon">⭐</div>
 
-                    <div class="task-info">
-                        <h3>Daily Check-in</h3>
-                        <p>+25 W2E</p>
-                    </div>
 
-                    <button onclick="completeTask(this,25)">
-                        Start
-                    </button>
-                </div>
+    <!-- Watch Ad -->
 
-            </section>
+    <section class="watch-card">
 
+        <div class="watch-icon">
+            ▶
+        </div>
 
-            <!-- Games -->
-            <section id="games" class="page">
 
-                <h2 class="section-title">Mini Games</h2>
+        <div class="watch-content">
 
-                <div class="game-card">
+            <h2>
+                Watch & Earn
+            </h2>
 
-                    <div class="game-icon">🎯</div>
+            <p>
+                Watch an ad and earn coins
+            </p>
 
-                    <h3>Tap Challenge</h3>
+        </div>
 
-                    <p>Tap as fast as you can!</p>
 
-                    <button onclick="startGame()">
-                        Play Game
-                    </button>
+        <button onclick="watchAd()">
+            Watch
+        </button>
 
-                </div>
+    </section>
 
-                <div class="game-card">
 
-                    <div class="game-icon">🎁</div>
 
-                    <h3>Lucky Box</h3>
+    <!-- Quick Stats -->
 
-                    <p>Try your luck and win coins.</p>
+    <div class="stats">
 
-                    <button onclick="luckyBox()">
-                        Open
-                    </button>
 
-                </div>
+        <div class="stat">
 
-            </section>
+            <span>
+                🎬
+            </span>
 
+            <strong id="adsWatched">
+                0
+            </strong>
 
-            <!-- Referral -->
-            <section id="referral" class="page">
+            <small>
+                Ads Watched
+            </small>
 
-                <h2 class="section-title">Invite Friends</h2>
+        </div>
 
-                <div class="referral-card">
 
-                    <div class="ref-icon">👥</div>
+        <div class="stat">
 
-                    <h2>Earn Together</h2>
+            <span>
+                🎁
+            </span>
 
-                    <p>
-                        Invite your friends and earn bonus coins.
-                    </p>
+            <strong id="dailyStatus">
+                Ready
+            </strong>
 
-                    <div class="ref-code">
-                        W2E-USER
-                    </div>
+            <small>
+                Daily Bonus
+            </small>
 
-                    <button onclick="copyReferral()">
-                        Copy Referral Link
-                    </button>
+        </div>
 
-                </div>
 
-            </section>
+        <div class="stat">
 
+            <span>
+                👥
+            </span>
 
-            <!-- Leaderboard -->
-            <section id="leaderboard" class="page">
+            <strong id="refCount">
+                0
+            </strong>
 
-                <h2 class="section-title">Leaderboard</h2>
+            <small>
+                Referrals
+            </small>
 
-                <div class="leader">
-
-                    <div>🥇 Alex</div>
-                    <strong>12,450</strong>
-
-                </div>
-
-                <div class="leader">
-
-                    <div>🥈 Rahim</div>
-                    <strong>10,320</strong>
-
-                </div>
-
-                <div class="leader">
-
-                    <div>🥉 Karim</div>
-                    <strong>9,870</strong>
-
-                </div>
-
-                <div class="leader">
-
-                    <div>👤 You</div>
-                    <strong id="leaderBalance">0</strong>
-
-                </div>
-
-            </section>
-
-
-            <!-- Wallet -->
-            <section id="wallet" class="page">
-
-                <h2 class="section-title">Wallet</h2>
-
-                <div class="wallet-card">
-
-                    <div class="wallet-icon">👛</div>
-
-                    <h2>Connect Wallet</h2>
-
-                    <p>
-                        Connect your TON wallet to manage your rewards.
-                    </p>
-
-                    <button onclick="connectWallet()">
-                        Connect TON Wallet
-                    </button>
-
-                    <div id="walletStatus">
-                        Not Connected
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            <!-- Profile -->
-            <section id="profile" class="page">
-
-                <h2 class="section-title">Profile</h2>
-
-                <div class="profile-card">
-
-                    <div class="profile-avatar">
-                        W
-                    </div>
-
-                    <h2>Watch2Earn User</h2>
-
-                    <p>User ID: #000001</p>
-
-                    <div class="profile-stats">
-
-                        <div>
-                            <strong id="profileCoins">0</strong>
-                            <small>Coins</small>
-                        </div>
-
-                        <div>
-                            <strong id="profileAds">0</strong>
-                            <small>Ads</small>
-                        </div>
-
-                        <div>
-                            <strong id="profileRefs">0</strong>
-                            <small>Referrals</small>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </main>
-
-
-        <!-- Bottom Navigation -->
-
-        <nav class="bottom-nav">
-
-            <button onclick="showPage('home')" class="nav-btn active">
-                <span>⌂</span>
-                Home
-            </button>
-
-            <button onclick="showPage('tasks')" class="nav-btn">
-                <span>✓</span>
-                Tasks
-            </button>
-
-            <button onclick="showPage('games')" class="nav-btn">
-                <span>🎮</span>
-                Games
-            </button>
-
-            <button onclick="showPage('leaderboard')" class="nav-btn">
-                <span>🏆</span>
-                Rank
-            </button>
-
-            <button onclick="showPage('wallet')" class="nav-btn">
-                <span>👛</span>
-                Wallet
-            </button>
-
-            <button onclick="showPage('profile')" class="nav-btn">
-    <span>👤</span>
-    Profile
-</button>
-
-        </nav>
+        </div>
 
     </div>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="script.js"></script>
+
+
+
+    <!-- Pages -->
+
+    <main>
+
+
+        <!-- HOME -->
+
+        <section
+            id="home"
+            class="page active"
+        >
+
+            <h2 class="section-title">
+                Daily Rewards
+            </h2>
+
+
+            <div class="reward-card">
+
+                <div>
+
+                    <h3>
+                        Daily Bonus
+                    </h3>
+
+                    <p>
+                        Claim your daily reward
+                    </p>
+
+                </div>
+
+
+                <button
+                    onclick="dailyBonus()"
+                    id="bonusBtn"
+                >
+                    Claim
+                </button>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- TASKS -->
+
+        <section
+            id="tasks"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Tasks
+            </h2>
+
+
+            <!-- Dynamic Tasks -->
+
+            <div id="tasksContainer">
+
+                <div class="task">
+
+                    <div class="task-info">
+
+                        <h3>
+                            Loading Tasks...
+                        </h3>
+
+                        <p>
+                            Please wait
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- GAMES -->
+
+        <section
+            id="games"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Mini Games
+            </h2>
+
+
+            <div class="game-card">
+
+                <div class="game-icon">
+                    🎯
+                </div>
+
+                <h3>
+                    Tap Challenge
+                </h3>
+
+                <p>
+                    Tap as fast as you can!
+                </p>
+
+                <button onclick="startGame()">
+                    Play Game
+                </button>
+
+            </div>
+
+
+
+            <div class="game-card">
+
+                <div class="game-icon">
+                    🎁
+                </div>
+
+                <h3>
+                    Lucky Box
+                </h3>
+
+                <p>
+                    Try your luck and win coins.
+                </p>
+
+                <button onclick="luckyBox()">
+                    Open
+                </button>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- REFERRAL -->
+
+        <section
+            id="referral"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Invite Friends
+            </h2>
+
+
+            <div class="referral-card">
+
+                <div class="ref-icon">
+                    👥
+                </div>
+
+                <h2>
+                    Earn Together
+                </h2>
+
+                <p>
+                    Invite your friends and earn
+                    bonus coins.
+                </p>
+
+
+                <div class="ref-code">
+                    W2E-USER
+                </div>
+
+
+                <button onclick="copyReferral()">
+                    Copy Referral Link
+                </button>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- LEADERBOARD -->
+
+        <section
+            id="leaderboard"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Leaderboard
+            </h2>
+
+
+            <div class="leader">
+
+                <div>
+                    🥇 Alex
+                </div>
+
+                <strong>
+                    12,450
+                </strong>
+
+            </div>
+
+
+            <div class="leader">
+
+                <div>
+                    🥈 Rahim
+                </div>
+
+                <strong>
+                    10,320
+                </strong>
+
+            </div>
+
+
+            <div class="leader">
+
+                <div>
+                    🥉 Karim
+                </div>
+
+                <strong>
+                    9,870
+                </strong>
+
+            </div>
+
+
+            <div class="leader">
+
+                <div>
+                    👤 You
+                </div>
+
+                <strong id="leaderBalance">
+                    0
+                </strong>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- WALLET -->
+
+        <section
+            id="wallet"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Wallet
+            </h2>
+
+
+            <div class="wallet-card">
+
+                <div class="wallet-icon">
+                    👛
+                </div>
+
+                <h2>
+                    Connect Wallet
+                </h2>
+
+                <p>
+                    Connect your TON wallet
+                    to manage your rewards.
+                </p>
+
+
+                <button onclick="connectWallet()">
+                    Connect TON Wallet
+                </button>
+
+
+                <div id="walletStatus">
+                    Not Connected
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- PROFILE -->
+
+        <section
+            id="profile"
+            class="page"
+        >
+
+            <h2 class="section-title">
+                Profile
+            </h2>
+
+
+            <div class="profile-card">
+
+                <div class="profile-avatar">
+                    W
+                </div>
+
+
+                <h2>
+                    Watch2Earn User
+                </h2>
+
+
+                <p>
+                    User ID: #000001
+                </p>
+
+
+                <div class="profile-stats">
+
+
+                    <div>
+
+                        <strong id="profileCoins">
+                            0
+                        </strong>
+
+                        <small>
+                            Coins
+                        </small>
+
+                    </div>
+
+
+                    <div>
+
+                        <strong id="profileAds">
+                            0
+                        </strong>
+
+                        <small>
+                            Ads
+                        </small>
+
+                    </div>
+
+
+                    <div>
+
+                        <strong id="profileRefs">
+                            0
+                        </strong>
+
+                        <small>
+                            Referrals
+                        </small>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- Bottom Navigation -->
+
+    <nav class="bottom-nav">
+
+
+        <button
+            onclick="showPage('home')"
+            class="nav-btn active"
+        >
+
+            <span>
+                ⌂
+            </span>
+
+            Home
+
+        </button>
+
+
+        <button
+            onclick="showPage('tasks')"
+            class="nav-btn"
+        >
+
+            <span>
+                ✓
+            </span>
+
+            Tasks
+
+        </button>
+
+
+        <button
+            onclick="showPage('games')"
+            class="nav-btn"
+        >
+
+            <span>
+                🎮
+            </span>
+
+            Games
+
+        </button>
+
+
+        <button
+            onclick="showPage('leaderboard')"
+            class="nav-btn"
+        >
+
+            <span>
+                🏆
+            </span>
+
+            Rank
+
+        </button>
+
+
+        <button
+            onclick="showPage('wallet')"
+            class="nav-btn"
+        >
+
+            <span>
+                👛
+            </span>
+
+            Wallet
+
+        </button>
+
+
+        <button
+            onclick="showPage('profile')"
+            class="nav-btn"
+        >
+
+            <span>
+                👤
+            </span>
+
+            Profile
+
+        </button>
+
+
+    </nav>
+
+
+</div>
+
+
+
+<!-- Telegram -->
+
+<script
+    src="https://telegram.org/js/telegram-web-app.js"
+></script>
+
+
+<!-- Main JS -->
+
+<script src="script.js"></script>
+
 
 </body>
+
 </html>
