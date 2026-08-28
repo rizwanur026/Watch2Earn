@@ -2,7 +2,6 @@ import os
 import hmac
 import hashlib
 import json
-
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 
@@ -14,12 +13,10 @@ from database import init_database, get_connection
 
 
 # =========================
-# App
+# FastAPI App
 # =========================
 
-app = FastAPI(
-    title="Watch2Earn API"
-)
+app = FastAPI(title="Watch2Earn API")
 
 
 # =========================
@@ -54,12 +51,10 @@ DAILY_BONUS = 100
 # =========================
 
 class TelegramAuth(BaseModel):
-
     init_data: str
 
 
 class TaskCreate(BaseModel):
-
     title: str
     description: str = ""
     task_type: str
@@ -68,7 +63,6 @@ class TaskCreate(BaseModel):
 
 
 class TaskComplete(BaseModel):
-
     init_data: str
 
 
@@ -78,12 +72,9 @@ class TaskComplete(BaseModel):
 
 def verify_telegram_init_data(init_data: str):
 
-    bot_token = os.getenv(
-        "TELEGRAM_BOT_TOKEN"
-    )
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
     if not bot_token:
-
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN is not configured"
         )
@@ -95,13 +86,9 @@ def verify_telegram_init_data(init_data: str):
         )
     )
 
-    received_hash = data.pop(
-        "hash",
-        None
-    )
+    received_hash = data.pop("hash", None)
 
     if not received_hash:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram hash missing"
@@ -109,9 +96,7 @@ def verify_telegram_init_data(init_data: str):
 
     data_check_string = "\n".join(
         f"{key}={value}"
-        for key, value in sorted(
-            data.items()
-        )
+        for key, value in sorted(data.items())
     )
 
     secret_key = hmac.new(
@@ -130,57 +115,12 @@ def verify_telegram_init_data(init_data: str):
         calculated_hash,
         received_hash
     ):
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Telegram authentication"
         )
 
     return data
-
-
-# =========================
-# Get Telegram User
-# =========================
-
-def get_telegram_user(init_data: str):
-
-    data = verify_telegram_init_data(
-        init_data
-    )
-
-    if "user" not in data:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Telegram user missing"
-        )
-
-    try:
-
-        telegram_user = json.loads(
-            data["user"]
-        )
-
-    except json.JSONDecodeError:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid Telegram user data"
-        )
-
-    telegram_id = telegram_user.get(
-        "id"
-    )
-
-    if not telegram_id:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Telegram ID missing"
-        )
-
-    return telegram_user
 
 
 # =========================
@@ -214,15 +154,40 @@ def health():
 # =========================
 
 @app.post("/auth")
-def authenticate_user(
-    auth: TelegramAuth
-):
+def authenticate_user(auth: TelegramAuth):
 
-    telegram_user = get_telegram_user(
+    data = verify_telegram_init_data(
         auth.init_data
     )
 
-    telegram_id = telegram_user["id"]
+    if "user" not in data:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram user missing"
+        )
+
+    try:
+
+        telegram_user = json.loads(
+            data["user"]
+        )
+
+    except json.JSONDecodeError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user data"
+        )
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
 
     username = telegram_user.get(
         "username"
@@ -277,15 +242,7 @@ def authenticate_user(
                     referrals,
                     ads_watched
                 )
-                VALUES
-                (
-                    %s,
-                    %s,
-                    %s,
-                    0,
-                    0,
-                    0
-                )
+                VALUES (%s, %s, %s, 0, 0, 0)
                 """,
                 (
                     telegram_id,
@@ -312,6 +269,20 @@ def authenticate_user(
             "user": dict(user)
         }
 
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "Authentication error:",
+            error
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to authenticate user"
+        )
+
     finally:
 
         cursor.close()
@@ -323,9 +294,7 @@ def authenticate_user(
 # =========================
 
 @app.get("/users/{telegram_id}")
-def get_user(
-    telegram_id: int
-):
+def get_user(telegram_id: int):
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -365,25 +334,47 @@ def get_user(
 # =========================
 
 @app.post("/daily-bonus")
-def claim_daily_bonus(
-    auth: TelegramAuth
-):
+def claim_daily_bonus(auth: TelegramAuth):
 
-    telegram_user = get_telegram_user(
+    data = verify_telegram_init_data(
         auth.init_data
     )
 
-    telegram_id = telegram_user["id"]
+    if "user" not in data:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram user missing"
+        )
+
+    try:
+
+        telegram_user = json.loads(
+            data["user"]
+        )
+
+    except json.JSONDecodeError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user data"
+        )
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
 
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
 
-        # -------------------------
-        # Check User
-        # -------------------------
-
+        # Check user
         cursor.execute(
             """
             SELECT *
@@ -402,10 +393,7 @@ def claim_daily_bonus(
                 detail="User not found"
             )
 
-        # -------------------------
-        # Check Previous Claim
-        # -------------------------
-
+        # Check previous claim
         cursor.execute(
             """
             SELECT *
@@ -417,36 +405,24 @@ def claim_daily_bonus(
 
         claim = cursor.fetchone()
 
-        now = datetime.now(
-            timezone.utc
-        )
+        now = datetime.now(timezone.utc)
 
         if claim and claim["last_claim"]:
 
-            last_claim = claim[
-                "last_claim"
-            ]
+            last_claim = claim["last_claim"]
 
             if last_claim.tzinfo is None:
 
-                last_claim = (
-                    last_claim.replace(
-                        tzinfo=timezone.utc
-                    )
+                last_claim = last_claim.replace(
+                    tzinfo=timezone.utc
                 )
 
-            elapsed = (
-                now - last_claim
-            )
+            elapsed = now - last_claim
 
-            if (
-                elapsed.total_seconds()
-                < 86400
-            ):
+            if elapsed.total_seconds() < 86400:
 
                 remaining = (
-                    86400
-                    -
+                    86400 -
                     elapsed.total_seconds()
                 )
 
@@ -455,29 +431,21 @@ def claim_daily_bonus(
                 )
 
                 minutes = int(
-                    (remaining % 3600)
-                    // 60
+                    (remaining % 3600) // 60
                 )
 
                 return {
                     "success": False,
-                    "message":
-                        "Daily bonus already claimed",
-                    "remaining_hours":
-                        hours,
-                    "remaining_minutes":
-                        minutes
+                    "message": "Daily bonus already claimed",
+                    "remaining_hours": hours,
+                    "remaining_minutes": minutes
                 }
 
-        # -------------------------
-        # Add Reward
-        # -------------------------
-
+        # Add reward
         cursor.execute(
             """
             UPDATE users
-            SET balance =
-                balance + %s
+            SET balance = balance + %s
             WHERE telegram_id = %s
             """,
             (
@@ -486,10 +454,7 @@ def claim_daily_bonus(
             )
         )
 
-        # -------------------------
-        # Transaction
-        # -------------------------
-
+        # Record transaction
         cursor.execute(
             """
             INSERT INTO reward_transactions
@@ -498,12 +463,7 @@ def claim_daily_bonus(
                 reward_type,
                 amount
             )
-            VALUES
-            (
-                %s,
-                %s,
-                %s
-            )
+            VALUES (%s, %s, %s)
             """,
             (
                 telegram_id,
@@ -512,10 +472,7 @@ def claim_daily_bonus(
             )
         )
 
-        # -------------------------
-        # Daily Claim
-        # -------------------------
-
+        # Record claim
         cursor.execute(
             """
             INSERT INTO daily_claims
@@ -523,17 +480,11 @@ def claim_daily_bonus(
                 telegram_id,
                 last_claim
             )
-            VALUES
-            (
-                %s,
-                %s
-            )
+            VALUES (%s, %s)
 
             ON CONFLICT (telegram_id)
-
             DO UPDATE SET
-                last_claim =
-                    EXCLUDED.last_claim
+                last_claim = EXCLUDED.last_claim
             """,
             (
                 telegram_id,
@@ -543,10 +494,7 @@ def claim_daily_bonus(
 
         connection.commit()
 
-        # -------------------------
-        # Updated Balance
-        # -------------------------
-
+        # Get updated balance
         cursor.execute(
             """
             SELECT balance
@@ -561,14 +509,12 @@ def claim_daily_bonus(
         return {
             "success": True,
             "reward": DAILY_BONUS,
-            "balance":
-                updated_user["balance"]
+            "balance": updated_user["balance"]
         }
 
     except HTTPException:
 
         connection.rollback()
-
         raise
 
     except Exception as error:
@@ -622,11 +568,10 @@ def get_tasks():
 
         return {
             "success": True,
-            "tasks":
-                [
-                    dict(task)
-                    for task in tasks
-                ]
+            "tasks": [
+                dict(task)
+                for task in tasks
+            ]
         }
 
     finally:
@@ -640,9 +585,7 @@ def get_tasks():
 # =========================
 
 @app.post("/admin/tasks")
-def create_task(
-    task: TaskCreate
-):
+def create_task(task: TaskCreate):
 
     if task.reward <= 0:
 
@@ -667,15 +610,7 @@ def create_task(
                 reward,
                 status
             )
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                TRUE
-            )
+            VALUES (%s, %s, %s, %s, %s, TRUE)
             RETURNING *
             """,
             (
@@ -720,29 +655,52 @@ def create_task(
 # Complete Task
 # =========================
 
-@app.post(
-    "/tasks/{task_id}/complete"
-)
+@app.post("/tasks/{task_id}/complete")
 def complete_task(
     task_id: int,
     auth: TaskComplete
 ):
 
-    telegram_user = get_telegram_user(
+    # Verify Telegram
+    data = verify_telegram_init_data(
         auth.init_data
     )
 
-    telegram_id = telegram_user["id"]
+    if "user" not in data:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram data"
+        )
+
+    try:
+
+        telegram_user = json.loads(
+            data["user"]
+        )
+
+    except json.JSONDecodeError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram user"
+        )
+
+    telegram_id = telegram_user.get("id")
+
+    if not telegram_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram ID missing"
+        )
 
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
 
-        # -------------------------
-        # Find Task
-        # -------------------------
-
+        # Find task
         cursor.execute(
             """
             SELECT *
@@ -762,10 +720,7 @@ def complete_task(
                 detail="Task not found"
             )
 
-        # -------------------------
-        # Find User
-        # -------------------------
-
+        # Find user
         cursor.execute(
             """
             SELECT *
@@ -784,10 +739,7 @@ def complete_task(
                 detail="User not found"
             )
 
-        # -------------------------
-        # Check Completion
-        # -------------------------
-
+        # Check if already completed
         cursor.execute(
             """
             SELECT id
@@ -797,7 +749,7 @@ def complete_task(
             """,
             (
                 telegram_id,
-                task_id
+                str(task_id)
             )
         )
 
@@ -807,21 +759,14 @@ def complete_task(
 
             return {
                 "success": False,
-                "message":
-                    "Task already completed",
-                "balance":
-                    user["balance"]
+                "message": "Task already completed"
             }
 
-        # -------------------------
-        # Add Reward
-        # -------------------------
-
+        # Add reward
         cursor.execute(
             """
             UPDATE users
-            SET balance =
-                balance + %s
+            SET balance = balance + %s
             WHERE telegram_id = %s
             """,
             (
@@ -830,10 +775,7 @@ def complete_task(
             )
         )
 
-        # -------------------------
-        # Completion Record
-        # -------------------------
-
+        # Record completion
         cursor.execute(
             """
             INSERT INTO task_completions
@@ -841,22 +783,15 @@ def complete_task(
                 telegram_id,
                 task_id
             )
-            VALUES
-            (
-                %s,
-                %s
-            )
+            VALUES (%s, %s)
             """,
             (
                 telegram_id,
-                task_id
+                str(task_id)
             )
         )
 
-        # -------------------------
-        # Reward Transaction
-        # -------------------------
-
+        # Record transaction
         cursor.execute(
             """
             INSERT INTO reward_transactions
@@ -865,12 +800,7 @@ def complete_task(
                 reward_type,
                 amount
             )
-            VALUES
-            (
-                %s,
-                %s,
-                %s
-            )
+            VALUES (%s, %s, %s)
             """,
             (
                 telegram_id,
@@ -881,10 +811,7 @@ def complete_task(
 
         connection.commit()
 
-        # -------------------------
-        # Updated Balance
-        # -------------------------
-
+        # Get updated balance
         cursor.execute(
             """
             SELECT balance
@@ -899,14 +826,12 @@ def complete_task(
         return {
             "success": True,
             "reward": task["reward"],
-            "balance":
-                updated_user["balance"]
+            "balance": updated_user["balance"]
         }
 
     except HTTPException:
 
         connection.rollback()
-
         raise
 
     except Exception as error:
