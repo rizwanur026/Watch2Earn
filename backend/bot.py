@@ -1,11 +1,16 @@
 import os
 import logging
-import psycopg2
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    WebAppInfo,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
+    CallbackQueryHandler,
     ContextTypes,
 )
 
@@ -20,13 +25,16 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 WEB_APP_URL = os.getenv(
     "WEB_APP_URL",
-    "https://rizwanur026.github.io/IBOY1/"
+    "https://rizwanur026.github.io/Watch2Earn/"
 )
 
 BOT_USERNAME = os.getenv(
     "BOT_USERNAME",
     "Watch2EarnBot"
 )
+
+REFERRER_REWARD = 100
+REFERRED_USER_REWARD = 50
 
 
 # =========================
@@ -42,64 +50,14 @@ logger = logging.getLogger(__name__)
 
 
 # =========================
-# Database
+# Referral Link
 # =========================
 
-def get_or_create_user(
-    telegram_id,
-    username=None,
-    first_name=None
-):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            SELECT *
-            FROM users
-            WHERE telegram_id = %s
-            """,
-            (telegram_id,)
-        )
-
-        user = cursor.fetchone()
-
-        if user:
-            return user
-
-        cursor.execute(
-            """
-            INSERT INTO users
-            (
-                telegram_id,
-                username,
-                first_name,
-                balance,
-                referrals,
-                ads_watched
-            )
-            VALUES (%s, %s, %s, 0, 0, 0)
-            RETURNING *
-            """,
-            (
-                telegram_id,
-                username,
-                first_name
-            )
-        )
-
-        user = cursor.fetchone()
-
-        connection.commit()
-
-        return user
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def get_referral_link(telegram_id):
+    return (
+        f"https://t.me/{BOT_USERNAME}"
+        f"?start={telegram_id}"
+    )
 
 
 # =========================
@@ -111,7 +69,7 @@ async def start_command(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    if not update.effective_user:
+    if not update.effective_user or not update.message:
         return
 
     user = update.effective_user
@@ -120,9 +78,10 @@ async def start_command(
     username = user.username
     first_name = user.first_name
 
-
     connection = get_connection()
     cursor = connection.cursor()
+
+    referral_success = False
 
     try:
 
@@ -138,12 +97,64 @@ async def start_command(
 
         existing_user = cursor.fetchone()
 
-
         # =========================
-        # New User
+        # NEW USER
         # =========================
 
         if not existing_user:
+
+            referrer_id = None
+
+            # Get referral parameter
+            if context.args:
+
+                try:
+
+                    possible_referrer = int(
+                        context.args[0]
+                    )
+
+                    # Self referral protection
+                    if possible_referrer != telegram_id:
+
+                        referrer_id = possible_referrer
+
+                except ValueError:
+
+                    referrer_id = None
+
+
+            # =========================
+            # Check Referrer
+            # =========================
+
+            if referrer_id:
+
+                cursor.execute(
+                    """
+                    SELECT telegram_id
+                    FROM users
+                    WHERE telegram_id = %s
+                    """,
+                    (referrer_id,)
+                )
+
+                referrer = cursor.fetchone()
+
+                if not referrer:
+
+                    referrer_id = None
+
+
+            # =========================
+            # Create User
+            # =========================
+
+            initial_balance = (
+                REFERRED_USER_REWARD
+                if referrer_id
+                else 0
+            )
 
             cursor.execute(
                 """
@@ -154,102 +165,114 @@ async def start_command(
                     first_name,
                     balance,
                     referrals,
-                    ads_watched
+                    ads_watched,
+                    referred_by
                 )
-                VALUES (%s, %s, %s, 0, 0, 0)
+                VALUES (%s, %s, %s, %s, 0, 0, %s)
+                RETURNING *
                 """,
                 (
                     telegram_id,
                     username,
-                    first_name
+                    first_name,
+                    initial_balance,
+                    referrer_id
                 )
             )
+
+            cursor.fetchone()
+
+
+            # =========================
+            # Referral Rewards
+            # =========================
+
+            if referrer_id:
+
+                # Reward new user
+                cursor.execute(
+                    """
+                    INSERT INTO reward_transactions
+                    (
+                        telegram_id,
+                        reward_type,
+                        amount
+                    )
+                    VALUES (%s, %s, %s)
+                    """,
+                    (
+                        telegram_id,
+                        "referral_bonus",
+                        REFERRED_USER_REWARD
+                    )
+                )
+
+
+                # Reward referrer
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET balance = balance + %s,
+                        referrals = referrals + 1
+                    WHERE telegram_id = %s
+                    """,
+                    (
+                        REFERRER_REWARD,
+                        referrer_id
+                    )
+                )
+
+
+                # Referrer transaction
+                cursor.execute(
+                    """
+                    INSERT INTO reward_transactions
+                    (
+                        telegram_id,
+                        reward_type,
+                        amount
+                    )
+                    VALUES (%s, %s, %s)
+                    """,
+                    (
+                        referrer_id,
+                        "referral",
+                        REFERRER_REWARD
+                    )
+                )
+
+
+                # Referral record
+                cursor.execute(
+                    """
+                    INSERT INTO referral_rewards
+                    (
+                        referrer_id,
+                        referred_user_id,
+                        reward
+                    )
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        referrer_id,
+                        telegram_id,
+                        REFERRER_REWARD
+                    )
+                )
+
+                referral_success = True
+
 
             connection.commit()
 
 
-            # =========================
-            # Referral
-            # =========================
-
-            if context.args:
-
-                referral_code = context.args[0]
-
-                try:
-
-                    referrer_id = int(
-                        referral_code
-                    )
-
-                except ValueError:
-
-                    referrer_id = None
-
-
-                if (
-                    referrer_id
-                    and referrer_id != telegram_id
-                ):
-
-                    # Check referrer
-                    cursor.execute(
-                        """
-                        SELECT telegram_id
-                        FROM users
-                        WHERE telegram_id = %s
-                        """,
-                        (referrer_id,)
-                    )
-
-                    referrer = cursor.fetchone()
-
-
-                    if referrer:
-
-                        referral_reward = 100
-
-
-                        # Reward referrer
-                        cursor.execute(
-                            """
-                            UPDATE users
-                            SET balance = balance + %s,
-                                referrals = referrals + 1
-                            WHERE telegram_id = %s
-                            """,
-                            (
-                                referral_reward,
-                                referrer_id
-                            )
-                        )
-
-
-                        # Record reward
-                        cursor.execute(
-                            """
-                            INSERT INTO reward_transactions
-                            (
-                                telegram_id,
-                                reward_type,
-                                amount
-                            )
-                            VALUES (%s, %s, %s)
-                            """,
-                            (
-                                referrer_id,
-                                "referral",
-                                referral_reward
-                            )
-                        )
-
-
-                        connection.commit()
-
+        # =========================
+        # EXISTING USER
+        # =========================
 
         else:
 
-            # Update Telegram profile
             cursor.execute(
                 """
                 UPDATE users
@@ -284,7 +307,7 @@ async def start_command(
 
 
     # =========================
-    # Open Mini App
+    # Main Buttons
     # =========================
 
     keyboard = [
@@ -296,6 +319,13 @@ async def start_command(
                     url=WEB_APP_URL
                 )
             )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "👥 Invite & Earn",
+                callback_data="referral"
+            )
         ]
 
     ]
@@ -305,17 +335,92 @@ async def start_command(
     )
 
 
-    await update.message.reply_text(
-
+    message = (
         f"👋 Welcome to Watch2Earn, "
         f"{first_name}!\n\n"
         f"💰 Watch ads\n"
         f"🎯 Complete tasks\n"
         f"🎁 Claim daily bonuses\n"
         f"👥 Invite friends\n\n"
-        f"Start earning W2E today!",
+        f"Start earning W2E today!"
+    )
 
+
+    if referral_success:
+
+        message += (
+            "\n\n🎉 Referral bonus received!"
+            f"\n💰 You received +{REFERRED_USER_REWARD} W2E"
+        )
+
+
+    await update.message.reply_text(
+        message,
         reply_markup=reply_markup
+    )
+
+
+# =========================
+# Referral Command
+# =========================
+
+async def referral_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    if not update.effective_user or not update.message:
+        return
+
+    telegram_id = update.effective_user.id
+
+    referral_link = get_referral_link(
+        telegram_id
+    )
+
+    await update.message.reply_text(
+
+        "👥 Invite & Earn\n\n"
+        f"🎁 Friend gets +{REFERRED_USER_REWARD} W2E\n"
+        f"💰 You get +{REFERRER_REWARD} W2E\n\n"
+        "🔗 Your referral link:\n"
+        f"{referral_link}\n\n"
+        "Share this link with your friends!"
+
+    )
+
+
+# =========================
+# Referral Button
+# =========================
+
+async def referral_button(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
+    if not query:
+        return
+
+    await query.answer()
+
+    telegram_id = query.from_user.id
+
+    referral_link = get_referral_link(
+        telegram_id
+    )
+
+    await query.message.reply_text(
+
+        "👥 Invite & Earn\n\n"
+        f"🎁 Friend gets +{REFERRED_USER_REWARD} W2E\n"
+        f"💰 You get +{REFERRER_REWARD} W2E\n\n"
+        "🔗 Your referral link:\n"
+        f"{referral_link}\n\n"
+        "Share this link with your friends!"
+
     )
 
 
@@ -328,13 +433,18 @@ async def help_command(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
+    if not update.message:
+        return
+
     await update.message.reply_text(
 
         "Watch2Earn Help\n\n"
         "/start - Open Watch2Earn\n"
+        "/referral - Get referral link\n"
         "/help - Show help\n\n"
         "Open the Mini App to access "
         "tasks, rewards, referrals and wallet."
+
     )
 
 
@@ -359,6 +469,7 @@ def main():
     )
 
 
+    # Commands
     application.add_handler(
         CommandHandler(
             "start",
@@ -366,11 +477,26 @@ def main():
         )
     )
 
+    application.add_handler(
+        CommandHandler(
+            "referral",
+            referral_command
+        )
+    )
 
     application.add_handler(
         CommandHandler(
             "help",
             help_command
+        )
+    )
+
+
+    # Referral button
+    application.add_handler(
+        CallbackQueryHandler(
+            referral_button,
+            pattern="^referral$"
         )
     )
 
