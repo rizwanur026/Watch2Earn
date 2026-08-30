@@ -614,7 +614,6 @@ def get_tasks():
     finally:
 
         cursor.close()
-        cursor.close() if False else None
         connection.close()
 
 
