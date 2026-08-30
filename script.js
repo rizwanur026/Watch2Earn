@@ -1483,3 +1483,550 @@ async function startApp() {
 
 
 startApp();
+
+// ===============================
+// Referral Info
+// ===============================
+
+async function loadReferralInfo() {
+
+    if (!tg || !tg.initDataUnsafe?.user) {
+        return;
+    }
+
+    const telegramId =
+        tg.initDataUnsafe.user.id;
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/referrals/${telegramId}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return;
+        }
+
+        referrals =
+            Number(data.referrals || 0);
+
+        updateUI();
+
+        const refElement =
+            document.getElementById("referralCount");
+
+        if (refElement) {
+            refElement.textContent =
+                referrals;
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Referral loading error:",
+            error
+        );
+
+    }
+
+}
+
+
+// ===============================
+// Generate Referral Link
+// ===============================
+
+function getReferralLink() {
+
+    const user =
+        tg?.initDataUnsafe?.user;
+
+    if (!user) {
+
+        alert(
+            "Open the app from Telegram."
+        );
+
+        return null;
+    }
+
+    return (
+        `https://t.me/Watch2EarnBot?start=${user.id}`
+    );
+
+}
+
+
+// ===============================
+// Copy Referral Link
+// ===============================
+
+async function copyReferral() {
+
+    const link =
+        getReferralLink();
+
+    if (!link) {
+        return;
+    }
+
+    try {
+
+        await navigator.clipboard.writeText(
+            link
+        );
+
+        alert(
+            "Referral link copied!"
+        );
+
+    } catch (error) {
+
+        alert(link);
+
+    }
+
+}
+
+
+// ===============================
+// Share Referral
+// ===============================
+
+function shareReferral() {
+
+    const link =
+        getReferralLink();
+
+    if (!link) {
+        return;
+    }
+
+    const text =
+        "Join Watch2Earn and start earning W2E!";
+
+    const shareUrl =
+        "https://t.me/share/url?" +
+        "url=" +
+        encodeURIComponent(link) +
+        "&text=" +
+        encodeURIComponent(text);
+
+    if (tg?.openTelegramLink) {
+
+        tg.openTelegramLink(
+            shareUrl
+        );
+
+    } else {
+
+        window.open(
+            shareUrl,
+            "_blank"
+        );
+
+    }
+
+}
+
+
+// ===============================
+// Leaderboard
+// ===============================
+
+async function loadLeaderboard() {
+
+    const container =
+        document.getElementById(
+            "leaderboardContainer"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML =
+        "<p>Loading leaderboard...</p>";
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/leaderboard?limit=20`
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Leaderboard failed"
+            );
+
+        }
+
+        if (
+            !data.success ||
+            !Array.isArray(data.leaderboard)
+        ) {
+
+            container.innerHTML =
+                "<p>No leaderboard data.</p>";
+
+            return;
+        }
+
+        if (data.leaderboard.length === 0) {
+
+            container.innerHTML =
+                "<p>No users yet.</p>";
+
+            return;
+        }
+
+        container.innerHTML = "";
+
+        data.leaderboard.forEach(
+            user => {
+
+                const row =
+                    document.createElement(
+                        "div"
+                    );
+
+                row.className =
+                    "leaderboard-row";
+
+                const name =
+                    escapeHTML(
+                        user.username
+                            ? `@${user.username}`
+                            : (
+                                user.first_name ||
+                                "User"
+                            )
+                    );
+
+                row.innerHTML = `
+                    <div class="leader-rank">
+                        #${user.rank}
+                    </div>
+
+                    <div class="leader-user">
+                        ${name}
+                    </div>
+
+                    <div class="leader-balance">
+                        ${Number(user.balance || 0)} W2E
+                    </div>
+                `;
+
+                container.appendChild(row);
+
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Leaderboard error:",
+            error
+        );
+
+        container.innerHTML =
+            "<p>Unable to load leaderboard.</p>";
+
+    }
+
+}
+
+
+// ===============================
+// Wallet
+// ===============================
+
+async function loadWallet() {
+
+    if (!tg || !tg.initData) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/wallet`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            return;
+        }
+
+        const walletInput =
+            document.getElementById(
+                "walletAddress"
+            );
+
+        const walletStatus =
+            document.getElementById(
+                "walletStatus"
+            );
+
+        if (walletInput) {
+
+            walletInput.value =
+                data.wallet_address || "";
+
+        }
+
+        if (walletStatus) {
+
+            if (data.wallet_address) {
+
+                walletStatus.textContent =
+                    "Wallet connected";
+
+            } else {
+
+                walletStatus.textContent =
+                    "No wallet connected";
+
+            }
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Wallet loading error:",
+            error
+        );
+
+    }
+
+}
+
+
+// ===============================
+// Save TON Wallet
+// ===============================
+
+async function saveWallet() {
+
+    if (!tg || !tg.initData) {
+
+        alert(
+            "Please open Watch2Earn from Telegram."
+        );
+
+        return;
+
+    }
+
+    const input =
+        document.getElementById(
+            "walletAddress"
+        );
+
+    if (!input) {
+
+        alert(
+            "Wallet input not found."
+        );
+
+        return;
+
+    }
+
+    const walletAddress =
+        input.value.trim();
+
+    if (!walletAddress) {
+
+        alert(
+            "Enter your TON wallet address."
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/wallet`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData,
+
+                        wallet_address:
+                            walletAddress
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Unable to save wallet"
+            );
+
+        }
+
+        const walletStatus =
+            document.getElementById(
+                "walletStatus"
+            );
+
+        if (walletStatus) {
+
+            walletStatus.textContent =
+                "Wallet connected ✓";
+
+        }
+
+        alert(
+            "TON wallet saved successfully!"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Wallet error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Unable to save wallet."
+        );
+
+    }
+
+}
+
+
+// ===============================
+// Remove TON Wallet
+// ===============================
+
+async function removeWallet() {
+
+    if (!tg || !tg.initData) {
+
+        alert(
+            "Please open Watch2Earn from Telegram."
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/wallet`,
+                {
+                    method: "DELETE",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Unable to remove wallet"
+            );
+
+        }
+
+        const input =
+            document.getElementById(
+                "walletAddress"
+            );
+
+        const status =
+            document.getElementById(
+                "walletStatus"
+            );
+
+        if (input) {
+            input.value = "";
+        }
+
+        if (status) {
+
+            status.textContent =
+                "No wallet connected";
+
+        }
+
+        alert(
+            "Wallet removed."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Wallet remove error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Unable to remove wallet."
+        );
+
+    }
+
+}
+
+
+// ===============================
+// Load New Features
+// ===============================
+
+loadReferralInfo();
+loadLeaderboard();
+loadWallet();
