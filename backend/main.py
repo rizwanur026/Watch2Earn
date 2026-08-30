@@ -2,11 +2,10 @@ import os
 import hmac
 import hashlib
 import json
-
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -17,10 +16,7 @@ from database import init_database, get_connection
 # FastAPI App
 # =========================
 
-app = FastAPI(
-    title="Watch2Earn API",
-    version="3.0"
-)
+app = FastAPI(title="Watch2Earn API")
 
 
 # =========================
@@ -49,7 +45,9 @@ init_database()
 
 DAILY_BONUS = 100
 AD_REWARD = 50
-REFERRAL_REWARD = 100
+
+REFERRER_REWARD = 100
+REFERRED_USER_REWARD = 50
 
 
 # =========================
@@ -68,6 +66,19 @@ class TaskCreate(BaseModel):
     reward: int
 
 
+class TaskComplete(BaseModel):
+    init_data: str
+
+
+class AdReward(BaseModel):
+    init_data: str
+
+
+class WalletUpdate(BaseModel):
+    init_data: str
+    wallet_address: str
+
+
 # =========================
 # Telegram Verification
 # =========================
@@ -77,7 +88,6 @@ def verify_telegram_init_data(init_data: str):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
     if not bot_token:
-
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN is not configured"
         )
@@ -92,7 +102,6 @@ def verify_telegram_init_data(init_data: str):
     received_hash = data.pop("hash", None)
 
     if not received_hash:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram hash missing"
@@ -119,7 +128,6 @@ def verify_telegram_init_data(init_data: str):
         calculated_hash,
         received_hash
     ):
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Telegram authentication"
@@ -129,7 +137,7 @@ def verify_telegram_init_data(init_data: str):
 
 
 # =========================
-# Telegram User Helper
+# Get Telegram User
 # =========================
 
 def get_telegram_user(init_data: str):
@@ -167,7 +175,7 @@ def get_telegram_user(init_data: str):
             detail="Telegram ID missing"
         )
 
-    return data, telegram_user
+    return telegram_user
 
 
 # =========================
@@ -197,13 +205,45 @@ def health():
 
 
 # =========================
+# Telegram Bot Webhook
+# =========================
+
+@app.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+
+    try:
+
+        update = await request.json()
+
+        from bot import process_update
+
+        result = process_update(update)
+
+        return {
+            "ok": True,
+            "result": result
+        }
+
+    except Exception as error:
+
+        print(
+            "Telegram webhook error:",
+            error
+        )
+
+        return {
+            "ok": False
+        }
+
+
+# =========================
 # Authenticate User
 # =========================
 
 @app.post("/auth")
 def authenticate_user(auth: TelegramAuth):
 
-    data, telegram_user = get_telegram_user(
+    telegram_user = get_telegram_user(
         auth.init_data
     )
 
@@ -217,17 +257,10 @@ def authenticate_user(auth: TelegramAuth):
         "first_name"
     )
 
-    # Telegram Mini App start parameter
-    start_param = data.get("start_param")
-
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
-
-        # =========================
-        # Check User
-        # =========================
 
         cursor.execute(
             """
@@ -239,10 +272,6 @@ def authenticate_user(auth: TelegramAuth):
         )
 
         user = cursor.fetchone()
-
-        # =========================
-        # Existing User
-        # =========================
 
         if user:
 
@@ -260,10 +289,6 @@ def authenticate_user(auth: TelegramAuth):
                 )
             )
 
-        # =========================
-        # New User
-        # =========================
-
         else:
 
             cursor.execute(
@@ -277,14 +302,7 @@ def authenticate_user(auth: TelegramAuth):
                     referrals,
                     ads_watched
                 )
-                VALUES (
-                    %s,
-                    %s,
-                    %s,
-                    0,
-                    0,
-                    0
-                )
+                VALUES (%s, %s, %s, 0, 0, 0)
                 """,
                 (
                     telegram_id,
@@ -293,103 +311,7 @@ def authenticate_user(auth: TelegramAuth):
                 )
             )
 
-            # =========================
-            # Process Referral
-            # =========================
-
-            if start_param:
-
-                try:
-
-                    referrer_id = int(
-                        start_param
-                    )
-
-                except ValueError:
-
-                    referrer_id = None
-
-                if (
-                    referrer_id
-                    and referrer_id != telegram_id
-                ):
-
-                    cursor.execute(
-                        """
-                        SELECT telegram_id
-                        FROM users
-                        WHERE telegram_id = %s
-                        """,
-                        (referrer_id,)
-                    )
-
-                    referrer = cursor.fetchone()
-
-                    if referrer:
-
-                        cursor.execute(
-                            """
-                            SELECT id
-                            FROM referrals
-                            WHERE referred_id = %s
-                            """,
-                            (telegram_id,)
-                        )
-
-                        already_referred = cursor.fetchone()
-
-                        if not already_referred:
-
-                            cursor.execute(
-                                """
-                                INSERT INTO referrals
-                                (
-                                    referrer_id,
-                                    referred_id
-                                )
-                                VALUES (%s, %s)
-                                """,
-                                (
-                                    referrer_id,
-                                    telegram_id
-                                )
-                            )
-
-                            cursor.execute(
-                                """
-                                UPDATE users
-                                SET referrals = referrals + 1,
-                                    balance = balance + %s
-                                WHERE telegram_id = %s
-                                """,
-                                (
-                                    REFERRAL_REWARD,
-                                    referrer_id
-                                )
-                            )
-
-                            cursor.execute(
-                                """
-                                INSERT INTO reward_transactions
-                                (
-                                    telegram_id,
-                                    reward_type,
-                                    amount
-                                )
-                                VALUES (%s, %s, %s)
-                                """,
-                                (
-                                    referrer_id,
-                                    "referral",
-                                    REFERRAL_REWARD
-                                )
-                            )
-
         connection.commit()
-
-        # =========================
-        # Get Updated User
-        # =========================
 
         cursor.execute(
             """
@@ -441,7 +363,17 @@ def get_user(telegram_id: int):
 
         cursor.execute(
             """
-            SELECT *
+            SELECT
+                id,
+                telegram_id,
+                username,
+                first_name,
+                balance,
+                referrals,
+                ads_watched,
+                wallet_address,
+                referred_by,
+                created_at
             FROM users
             WHERE telegram_id = %s
             """,
@@ -472,11 +404,9 @@ def get_user(telegram_id: int):
 # =========================
 
 @app.post("/daily-bonus")
-def claim_daily_bonus(
-    auth: TelegramAuth
-):
+def claim_daily_bonus(auth: TelegramAuth):
 
-    _, telegram_user = get_telegram_user(
+    telegram_user = get_telegram_user(
         auth.init_data
     )
 
@@ -486,10 +416,6 @@ def claim_daily_bonus(
     cursor = connection.cursor()
 
     try:
-
-        # =========================
-        # Check User
-        # =========================
 
         cursor.execute(
             """
@@ -508,10 +434,6 @@ def claim_daily_bonus(
                 status_code=404,
                 detail="User not found"
             )
-
-        # =========================
-        # Check Claim
-        # =========================
 
         cursor.execute(
             """
@@ -536,9 +458,7 @@ def claim_daily_bonus(
                     tzinfo=timezone.utc
                 )
 
-            elapsed = (
-                now - last_claim
-            )
+            elapsed = now - last_claim
 
             if elapsed.total_seconds() < 86400:
 
@@ -557,15 +477,10 @@ def claim_daily_bonus(
 
                 return {
                     "success": False,
-                    "message":
-                        "Daily bonus already claimed",
+                    "message": "Daily bonus already claimed",
                     "remaining_hours": hours,
                     "remaining_minutes": minutes
                 }
-
-        # =========================
-        # Add Reward
-        # =========================
 
         cursor.execute(
             """
@@ -578,10 +493,6 @@ def claim_daily_bonus(
                 telegram_id
             )
         )
-
-        # =========================
-        # Reward History
-        # =========================
 
         cursor.execute(
             """
@@ -599,10 +510,6 @@ def claim_daily_bonus(
                 DAILY_BONUS
             )
         )
-
-        # =========================
-        # Save Claim
-        # =========================
 
         cursor.execute(
             """
@@ -624,10 +531,6 @@ def claim_daily_bonus(
         )
 
         connection.commit()
-
-        # =========================
-        # Updated Balance
-        # =========================
 
         cursor.execute(
             """
@@ -711,32 +614,8 @@ def get_tasks():
     finally:
 
         cursor.close()
+        cursor.close() if False else None
         connection.close()
-
-
-# =========================
-# Admin Check
-# =========================
-
-def verify_admin(telegram_id: int):
-
-    admin_id = os.getenv(
-        "ADMIN_TELEGRAM_ID"
-    )
-
-    if not admin_id:
-
-        raise HTTPException(
-            status_code=500,
-            detail="ADMIN_TELEGRAM_ID is not configured"
-        )
-
-    if str(telegram_id) != str(admin_id):
-
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access required"
-        )
 
 
 # =========================
@@ -744,20 +623,7 @@ def verify_admin(telegram_id: int):
 # =========================
 
 @app.post("/admin/tasks")
-def create_task(
-    task: TaskCreate,
-    auth: TelegramAuth
-):
-
-    _, telegram_user = get_telegram_user(
-        auth.init_data
-    )
-
-    telegram_id = telegram_user["id"]
-
-    verify_admin(
-        telegram_id
-    )
+def create_task(task: TaskCreate):
 
     if task.reward <= 0:
 
@@ -782,14 +648,7 @@ def create_task(
                 reward,
                 status
             )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                TRUE
-            )
+            VALUES (%s, %s, %s, %s, %s, TRUE)
             RETURNING *
             """,
             (
@@ -837,10 +696,10 @@ def create_task(
 @app.post("/tasks/{task_id}/complete")
 def complete_task(
     task_id: int,
-    auth: TelegramAuth
+    auth: TaskComplete
 ):
 
-    _, telegram_user = get_telegram_user(
+    telegram_user = get_telegram_user(
         auth.init_data
     )
 
@@ -850,10 +709,6 @@ def complete_task(
     cursor = connection.cursor()
 
     try:
-
-        # =========================
-        # Find Task
-        # =========================
 
         cursor.execute(
             """
@@ -874,10 +729,6 @@ def complete_task(
                 detail="Task not found"
             )
 
-        # =========================
-        # Find User
-        # =========================
-
         cursor.execute(
             """
             SELECT *
@@ -895,10 +746,6 @@ def complete_task(
                 status_code=404,
                 detail="User not found"
             )
-
-        # =========================
-        # Check Completion
-        # =========================
 
         cursor.execute(
             """
@@ -919,13 +766,8 @@ def complete_task(
 
             return {
                 "success": False,
-                "message":
-                    "Task already completed"
+                "message": "Task already completed"
             }
-
-        # =========================
-        # Add Reward
-        # =========================
 
         cursor.execute(
             """
@@ -938,10 +780,6 @@ def complete_task(
                 telegram_id
             )
         )
-
-        # =========================
-        # Record Completion
-        # =========================
 
         cursor.execute(
             """
@@ -957,10 +795,6 @@ def complete_task(
                 task_id
             )
         )
-
-        # =========================
-        # Reward Transaction
-        # =========================
 
         cursor.execute(
             """
@@ -980,10 +814,6 @@ def complete_task(
         )
 
         connection.commit()
-
-        # =========================
-        # Updated Balance
-        # =========================
 
         cursor.execute(
             """
@@ -1031,16 +861,10 @@ def complete_task(
 # Watch Ad Reward
 # =========================
 
-class AdReward(BaseModel):
-    init_data: str
-
-
 @app.post("/watch-ad")
-def watch_ad(
-    auth: AdReward
-):
+def watch_ad(auth: AdReward):
 
-    _, telegram_user = get_telegram_user(
+    telegram_user = get_telegram_user(
         auth.init_data
     )
 
@@ -1050,10 +874,6 @@ def watch_ad(
     cursor = connection.cursor()
 
     try:
-
-        # =========================
-        # Give Reward
-        # =========================
 
         cursor.execute(
             """
@@ -1078,10 +898,6 @@ def watch_ad(
                 detail="User not found"
             )
 
-        # =========================
-        # Reward History
-        # =========================
-
         cursor.execute(
             """
             INSERT INTO reward_transactions
@@ -1105,8 +921,7 @@ def watch_ad(
             "success": True,
             "reward": AD_REWARD,
             "balance": user["balance"],
-            "ads_watched":
-                user["ads_watched"]
+            "ads_watched": user["ads_watched"]
         }
 
     except HTTPException:
@@ -1119,7 +934,7 @@ def watch_ad(
         connection.rollback()
 
         print(
-            "Watch ad error:",
+            "Watch ad reward error:",
             error
         )
 
@@ -1134,14 +949,12 @@ def watch_ad(
         connection.close()
 
 
-# =========================
-# Referral Stats
-# =========================
+# ============================================================
+# REFERRAL SYSTEM
+# ============================================================
 
 @app.get("/referrals/{telegram_id}")
-def get_referrals(
-    telegram_id: int
-):
+def get_referrals(telegram_id: int):
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -1169,21 +982,30 @@ def get_referrals(
 
         cursor.execute(
             """
-            SELECT COUNT(*) AS total
-            FROM referrals
-            WHERE referrer_id = %s
+            SELECT
+                u.telegram_id,
+                u.username,
+                u.first_name,
+                r.reward,
+                r.created_at
+            FROM referral_rewards r
+            JOIN users u
+                ON u.telegram_id = r.referred_user_id
+            WHERE r.referrer_id = %s
+            ORDER BY r.id DESC
             """,
             (telegram_id,)
         )
 
-        result = cursor.fetchone()
+        referrals_list = cursor.fetchall()
 
         return {
             "success": True,
-            "referrals":
-                user["referrals"],
-            "total":
-                result["total"]
+            "referrals": user["referrals"] or 0,
+            "users": [
+                dict(item)
+                for item in referrals_list
+            ]
         }
 
     finally:
@@ -1192,12 +1014,18 @@ def get_referrals(
         connection.close()
 
 
-# =========================
-# Leaderboard
-# =========================
+# ============================================================
+# LEADERBOARD
+# ============================================================
 
 @app.get("/leaderboard")
-def leaderboard():
+def leaderboard(limit: int = 20):
+
+    if limit < 1:
+        limit = 1
+
+    if limit > 100:
+        limit = 100
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -1214,47 +1042,241 @@ def leaderboard():
                 referrals,
                 ads_watched
             FROM users
-            ORDER BY balance DESC
-            LIMIT 100
-            """
+            ORDER BY balance DESC, id ASC
+            LIMIT %s
+            """,
+            (limit,)
         )
 
         users = cursor.fetchall()
 
-        leaderboard_data = []
+        result = []
 
         for index, user in enumerate(
             users,
             start=1
         ):
 
-            name = (
-                user["username"]
-                or user["first_name"]
-                or "User"
+            result.append(
+                {
+                    "rank": index,
+                    "telegram_id": user["telegram_id"],
+                    "username": user["username"],
+                    "first_name": user["first_name"],
+                    "balance": user["balance"],
+                    "referrals": user["referrals"],
+                    "ads_watched": user["ads_watched"]
+                }
             )
-
-            leaderboard_data.append({
-                "rank": index,
-                "telegram_id":
-                    user["telegram_id"],
-                "username":
-                    name,
-                "balance":
-                    user["balance"],
-                "referrals":
-                    user["referrals"],
-                "ads_watched":
-                    user["ads_watched"]
-            })
 
         return {
             "success": True,
-            "leaderboard":
-                leaderboard_data
+            "leaderboard": result
         }
 
     finally:
 
         cursor.close()
         connection.close()
+
+
+# ============================================================
+# WALLET
+# ============================================================
+
+@app.get("/wallet")
+def get_wallet(auth: TelegramAuth):
+
+    telegram_user = get_telegram_user(
+        auth.init_data
+    )
+
+    telegram_id = telegram_user["id"]
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                wallet_address,
+                balance
+            FROM users
+            WHERE telegram_id = %s
+            """,
+            (telegram_id,)
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        return {
+            "success": True,
+            "wallet_address": user["wallet_address"],
+            "balance": user["balance"]
+        }
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+@app.post("/wallet")
+def save_wallet(wallet: WalletUpdate):
+
+    telegram_user = get_telegram_user(
+        wallet.init_data
+    )
+
+    telegram_id = telegram_user["id"]
+
+    wallet_address = (
+        wallet.wallet_address.strip()
+    )
+
+    if not wallet_address:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Wallet address is required"
+        )
+
+    # Basic TON address validation
+    if not (
+        wallet_address.startswith("EQ")
+        or wallet_address.startswith("UQ")
+        or wallet_address.startswith("kQ")
+        or wallet_address.startswith("0:")
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid TON wallet address"
+        )
+
+    if len(wallet_address) < 20:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid TON wallet address"
+        )
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET wallet_address = %s
+            WHERE telegram_id = %s
+            RETURNING wallet_address, balance
+            """,
+            (
+                wallet_address,
+                telegram_id
+            )
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        connection.commit()
+
+        return {
+            "success": True,
+            "message": "TON wallet saved successfully",
+            "wallet_address": user["wallet_address"],
+            "balance": user["balance"]
+        }
+
+    except HTTPException:
+
+        connection.rollback()
+        raise
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "Wallet save error:",
+            error
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to save wallet"
+        )
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+@app.delete("/wallet")
+def remove_wallet(auth: TelegramAuth):
+
+    telegram_user = get_telegram_user(
+        auth.init_data
+    )
+
+    telegram_id = telegram_user["id"]
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET wallet_address = NULL
+            WHERE telegram_id = %s
+            RETURNING telegram_id
+            """,
+            (telegram_id,)
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        connection.commit()
+
+        return {
+            "success": True,
+            "message": "Wallet removed"
+        }
+
+    except HTTPException:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()-
