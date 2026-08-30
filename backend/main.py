@@ -1279,4 +1279,4 @@ def remove_wallet(auth: TelegramAuth):
     finally:
 
         cursor.close()
-        connection.close()-
+        connection.close()
