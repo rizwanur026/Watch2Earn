@@ -147,7 +147,6 @@ def get_telegram_user(init_data: str):
     )
 
     if "user" not in data:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram user missing"
@@ -188,7 +187,7 @@ def home():
     return {
         "status": "online",
         "app": "Watch2Earn",
-        "version": "3.0"
+        "version": "4.0"
     }
 
 
@@ -205,7 +204,7 @@ def health():
 
 
 # =========================
-# Telegram Bot Webhook
+# Telegram Webhook
 # =========================
 
 @app.post("/telegram/webhook")
@@ -249,13 +248,8 @@ def authenticate_user(auth: TelegramAuth):
 
     telegram_id = telegram_user["id"]
 
-    username = telegram_user.get(
-        "username"
-    )
-
-    first_name = telegram_user.get(
-        "first_name"
-    )
+    username = telegram_user.get("username")
+    first_name = telegram_user.get("first_name")
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -467,19 +461,15 @@ def claim_daily_bonus(auth: TelegramAuth):
                     elapsed.total_seconds()
                 )
 
-                hours = int(
-                    remaining // 3600
-                )
-
-                minutes = int(
-                    (remaining % 3600) // 60
-                )
-
                 return {
                     "success": False,
                     "message": "Daily bonus already claimed",
-                    "remaining_hours": hours,
-                    "remaining_minutes": minutes
+                    "remaining_hours": int(
+                        remaining // 3600
+                    ),
+                    "remaining_minutes": int(
+                        (remaining % 3600) // 60
+                    )
                 }
 
         cursor.execute(
@@ -519,7 +509,6 @@ def claim_daily_bonus(auth: TelegramAuth):
                 last_claim
             )
             VALUES (%s, %s)
-
             ON CONFLICT (telegram_id)
             DO UPDATE SET
                 last_claim = EXCLUDED.last_claim
@@ -949,7 +938,7 @@ def watch_ad(auth: AdReward):
 
 
 # ============================================================
-# REFERRAL SYSTEM
+# REFERRALS
 # ============================================================
 
 @app.get("/referrals/{telegram_id}")
@@ -996,14 +985,16 @@ def get_referrals(telegram_id: int):
             (telegram_id,)
         )
 
-        referrals_list = cursor.fetchall()
+        referral_users = cursor.fetchall()
 
         return {
             "success": True,
             "referrals": user["referrals"] or 0,
+            "referrer_reward": REFERRER_REWARD,
+            "referred_user_reward": REFERRED_USER_REWARD,
             "users": [
                 dict(item)
-                for item in referrals_list
+                for item in referral_users
             ]
         }
 
@@ -1138,9 +1129,7 @@ def save_wallet(wallet: WalletUpdate):
 
     telegram_id = telegram_user["id"]
 
-    wallet_address = (
-        wallet.wallet_address.strip()
-    )
+    wallet_address = wallet.wallet_address.strip()
 
     if not wallet_address:
 
@@ -1149,7 +1138,6 @@ def save_wallet(wallet: WalletUpdate):
             detail="Wallet address is required"
         )
 
-    # Basic TON address validation
     if not (
         wallet_address.startswith("EQ")
         or wallet_address.startswith("UQ")
