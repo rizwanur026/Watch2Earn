@@ -41,7 +41,6 @@
 
         </div>
 
-
         <div class="avatar">
             W
         </div>
@@ -58,7 +57,6 @@
             YOUR BALANCE
         </div>
 
-
         <div class="balance">
 
             <span id="balance">
@@ -70,7 +68,6 @@
             </span>
 
         </div>
-
 
         <div class="balance-sub">
             Available Coins
@@ -88,7 +85,6 @@
             ▶
         </div>
 
-
         <div class="watch-content">
 
             <h2>
@@ -101,7 +97,6 @@
 
         </div>
 
-
         <button onclick="watchAd()">
             Watch
         </button>
@@ -113,7 +108,6 @@
     <!-- Quick Stats -->
 
     <div class="stats">
-
 
         <div class="stat">
 
@@ -226,8 +220,6 @@
             </h2>
 
 
-            <!-- Dynamic Tasks -->
-
             <div id="tasksContainer">
 
                 <div class="task">
@@ -285,7 +277,6 @@
             </div>
 
 
-
             <div class="game-card">
 
                 <div class="game-icon">
@@ -328,9 +319,11 @@
                     👥
                 </div>
 
+
                 <h2>
                     Earn Together
                 </h2>
+
 
                 <p>
                     Invite your friends and earn
@@ -338,14 +331,71 @@
                 </p>
 
 
-                <div class="ref-code">
-                    W2E-USER
+                <!-- Referral Stats -->
+
+                <div class="ref-stats">
+
+                    <div>
+
+                        <strong id="referralCount">
+                            0
+                        </strong>
+
+                        <small>
+                            Referrals
+                        </small>
+
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            100 W2E
+                        </strong>
+
+                        <small>
+                            Your Reward
+                        </small>
+
+                    </div>
+
                 </div>
 
 
-                <button onclick="copyReferral()">
-                    Copy Referral Link
+                <!-- Referral Link -->
+
+                <div class="ref-link-box">
+
+                    <input
+                        type="text"
+                        id="referralLink"
+                        readonly
+                        placeholder="Generating referral link..."
+                    >
+
+                </div>
+
+
+                <button
+                    type="button"
+                    onclick="copyReferral()"
+                >
+                    📋 Copy Referral Link
                 </button>
+
+
+                <button
+                    type="button"
+                    onclick="shareReferral()"
+                >
+                    📤 Share With Friends
+                </button>
+
+
+                <p class="ref-reward-info">
+                    Earn 100 W2E for every friend
+                    who joins through your link.
+                </p>
 
             </div>
 
@@ -365,54 +415,11 @@
             </h2>
 
 
-            <div class="leader">
+            <div id="leaderboardContainer">
 
-                <div>
-                    🥇 Alex
-                </div>
-
-                <strong>
-                    12,450
-                </strong>
-
-            </div>
-
-
-            <div class="leader">
-
-                <div>
-                    🥈 Rahim
-                </div>
-
-                <strong>
-                    10,320
-                </strong>
-
-            </div>
-
-
-            <div class="leader">
-
-                <div>
-                    🥉 Karim
-                </div>
-
-                <strong>
-                    9,870
-                </strong>
-
-            </div>
-
-
-            <div class="leader">
-
-                <div>
-                    👤 You
-                </div>
-
-                <strong id="leaderBalance">
-                    0
-                </strong>
+                <p>
+                    Loading leaderboard...
+                </p>
 
             </div>
 
@@ -448,8 +455,24 @@
                 </p>
 
 
-                <button onclick="connectWallet()">
-                    Connect TON Wallet
+                <input
+                    type="text"
+                    id="walletAddress"
+                    placeholder="Enter TON wallet address"
+                >
+
+
+                <button
+                    onclick="saveWallet()"
+                >
+                    Save TON Wallet
+                </button>
+
+
+                <button
+                    onclick="removeWallet()"
+                >
+                    Remove Wallet
                 </button>
 
 
@@ -532,7 +555,6 @@
                         </small>
 
                     </div>
-
 
                 </div>
 
@@ -634,6 +656,20 @@
         </button>
 
 
+        <button
+            onclick="showPage('referral')"
+            class="nav-btn"
+        >
+
+            <span>
+                👥
+            </span>
+
+            Invite
+
+        </button>
+
+
     </nav>
 
 
@@ -641,7 +677,7 @@
 
 
 
-<!-- Telegram -->
+<!-- Telegram Mini App -->
 
 <script
     src="https://telegram.org/js/telegram-web-app.js"
