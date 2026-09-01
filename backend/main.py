@@ -1,4 +1,3 @@
-```python
 import os
 import hmac
 import hashlib
@@ -1953,4 +1952,3 @@ def admin_transactions(
 #
 # Do NOT put backend.main:app here if main.py is inside backend
 # and Render Root Directory is already set to backend.
-```
