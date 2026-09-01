@@ -4,16 +4,27 @@
     box-sizing: border-box;
 }
 
+html {
+    background: #080b12;
+}
+
 body {
     font-family: Arial, sans-serif;
     background: #080b12;
     color: #ffffff;
+    min-height: 100vh;
 }
 
 button {
     border: none;
     cursor: pointer;
     color: white;
+    font-family: inherit;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .app {
@@ -129,6 +140,15 @@ button {
     font-weight: bold;
 }
 
+.watch-card button:hover,
+.reward-card button:hover,
+.task button:hover,
+.game-card button:hover,
+.referral-card button:hover,
+.wallet-card button:hover {
+    filter: brightness(1.08);
+}
+
 .stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -180,7 +200,8 @@ button {
 .referral-card,
 .wallet-card,
 .profile-card,
-.leader {
+.leader,
+.leaderboard-row {
     background: #111722;
     border: 1px solid #202a3a;
     border-radius: 17px;
@@ -271,12 +292,58 @@ button {
     margin: 10px 0 18px;
 }
 
-.ref-code {
+.ref-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.ref-stats > div {
     background: #090d14;
-    border: 1px dashed #334057;
-    padding: 13px;
-    border-radius: 10px;
+    border: 1px solid #263043;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.ref-stats strong,
+.ref-stats small {
+    display: block;
+}
+
+.ref-stats small {
+    color: #737d8f;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.ref-link-box {
     margin-bottom: 12px;
+}
+
+.ref-link-box input,
+.wallet-card input {
+    width: 100%;
+    background: #090d14;
+    color: white;
+    border: 1px solid #334057;
+    border-radius: 10px;
+    padding: 12px;
+    outline: none;
+}
+
+.ref-link-box input:focus,
+.wallet-card input:focus {
+    border-color: #26c875;
+}
+
+.referral-card button,
+.wallet-card button {
+    margin: 5px 0;
+}
+
+.ref-reward-info {
+    margin-top: 14px !important;
 }
 
 #walletStatus {
@@ -285,15 +352,34 @@ button {
     margin-top: 15px;
 }
 
-.leader {
-    display: flex;
-    justify-content: space-between;
-    padding: 16px;
+.leaderboard-row {
+    display: grid;
+    grid-template-columns: 55px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
     margin-bottom: 8px;
 }
 
-.leader strong {
+.leader-rank {
+    font-weight: bold;
+}
+
+.leader-user {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leader-balance {
     color: #26c875;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.error-text {
+    color: #ff8585 !important;
+    margin-top: 7px;
 }
 
 .profile-avatar {
@@ -336,6 +422,7 @@ button {
 
 .bottom-nav {
     position: fixed;
+    z-index: 1000;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
@@ -355,6 +442,7 @@ button {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    min-width: 42px;
 }
 
 .nav-btn span {
@@ -366,7 +454,6 @@ button {
 }
 
 @media (max-width: 380px) {
-
     .balance {
         font-size: 32px;
     }
@@ -376,4 +463,7 @@ button {
         padding-right: 12px;
     }
 
+    .nav-btn {
+        font-size: 9px;
+    }
 }
