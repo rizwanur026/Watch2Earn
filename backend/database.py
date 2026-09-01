@@ -24,108 +24,134 @@ def init_database():
     connection = get_connection()
     cursor = connection.cursor()
 
-    # =========================
-    # Users
-    # =========================
+    try:
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT UNIQUE NOT NULL,
-            username TEXT,
-            first_name TEXT,
-            balance BIGINT DEFAULT 0,
-            referrals INTEGER DEFAULT 0,
-            ads_watched INTEGER DEFAULT 0,
-            referred_by BIGINT,
-            wallet_address TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # =========================
+        # Users
+        # =========================
 
-    # Existing database compatibility
-    cursor.execute("""
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS referred_by BIGINT
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT UNIQUE NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                balance BIGINT DEFAULT 0,
+                referrals INTEGER DEFAULT 0,
+                ads_watched INTEGER DEFAULT 0,
+                referred_by BIGINT,
+                wallet_address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    cursor.execute("""
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS wallet_address TEXT
-    """)
+        cursor.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS referred_by BIGINT
+        """)
 
-    # =========================
-    # Reward History
-    # =========================
+        cursor.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS wallet_address TEXT
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS reward_transactions (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT NOT NULL,
-            reward_type TEXT NOT NULL,
-            amount BIGINT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # =========================
+        # Reward History
+        # =========================
 
-    # =========================
-    # Daily Claims
-    # =========================
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reward_transactions (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                reward_type TEXT NOT NULL,
+                amount BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS daily_claims (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT UNIQUE NOT NULL,
-            last_claim TIMESTAMP
-        )
-    """)
+        # =========================
+        # Daily Claims
+        # =========================
 
-    # =========================
-    # Tasks
-    # =========================
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_claims (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT UNIQUE NOT NULL,
+                last_claim TIMESTAMP
+            )
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            description TEXT,
-            task_type TEXT NOT NULL,
-            link TEXT,
-            reward BIGINT NOT NULL DEFAULT 0,
-            status BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # =========================
+        # Tasks
+        # =========================
 
-    # =========================
-    # Task Completions
-    # =========================
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                task_type TEXT NOT NULL,
+                link TEXT,
+                reward BIGINT NOT NULL DEFAULT 0,
+                status BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS task_completions (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT NOT NULL,
-            task_id INTEGER NOT NULL,
-            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (telegram_id, task_id)
-        )
-    """)
+        # =========================
+        # Task Completions
+        # =========================
 
-    # =========================
-    # Referral Completions
-    # =========================
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS task_completions (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (telegram_id, task_id)
+            )
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS referral_rewards (
-            id SERIAL PRIMARY KEY,
-            referrer_id BIGINT UNIQUE NOT NULL,
-            referred_user_id BIGINT UNIQUE NOT NULL,
-            reward BIGINT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # =========================
+        # Referral Rewards
+        # =========================
 
-    connection.commit()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS referral_rewards (
+                id SERIAL PRIMARY KEY,
+                referrer_id BIGINT NOT NULL,
+                referred_user_id BIGINT NOT NULL,
+                reward BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    cursor.close()
-    connection.close()
+        # IMPORTANT:
+        # A referrer can refer MANY users.
+        # Only referred_user_id must be unique.
+
+        cursor.execute("""
+            ALTER TABLE referral_rewards
+            DROP CONSTRAINT IF EXISTS referral_rewards_referrer_id_key
+        """)
+
+        cursor.execute("""
+            ALTER TABLE referral_rewards
+            DROP CONSTRAINT IF EXISTS referral_rewards_referred_user_id_key
+        """)
+
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS
+            referral_rewards_referred_user_unique
+            ON referral_rewards(referred_user_id)
+        """)
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
