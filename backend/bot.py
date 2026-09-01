@@ -1,4 +1,3 @@
-```python
 import os
 import logging
 
@@ -12,6 +11,7 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    CallbackQueryHandler,
 )
 
 from database import get_connection
@@ -50,73 +50,6 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# DATABASE - GET OR CREATE USER
-# ============================================================
-
-def get_or_create_user(
-    telegram_id,
-    username=None,
-    first_name=None
-):
-
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            SELECT *
-            FROM users
-            WHERE telegram_id = %s
-            """,
-            (telegram_id,)
-        )
-
-        user = cursor.fetchone()
-
-        if user:
-            return user
-
-        cursor.execute(
-            """
-            INSERT INTO users
-            (
-                telegram_id,
-                username,
-                first_name,
-                balance,
-                referrals,
-                ads_watched
-            )
-            VALUES (%s, %s, %s, 0, 0, 0)
-            RETURNING *
-            """,
-            (
-                telegram_id,
-                username,
-                first_name
-            )
-        )
-
-        user = cursor.fetchone()
-
-        connection.commit()
-
-        return user
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-
-# ============================================================
 # REFERRAL URL
 # ============================================================
 
@@ -152,13 +85,8 @@ async def start_command(
     cursor = connection.cursor()
 
     referred_user_rewarded = False
-    referrer_rewarded = False
 
     try:
-
-        # ====================================================
-        # CHECK USER
-        # ====================================================
 
         cursor.execute(
             """
@@ -171,16 +99,11 @@ async def start_command(
 
         existing_user = cursor.fetchone()
 
-
         # ====================================================
         # NEW USER
         # ====================================================
 
         if not existing_user:
-
-            # ------------------------------------------------
-            # CREATE USER
-            # ------------------------------------------------
 
             cursor.execute(
                 """
@@ -205,56 +128,35 @@ async def start_command(
 
             existing_user = cursor.fetchone()
 
-
             # =================================================
             # REFERRAL
             # =================================================
 
             if context.args:
 
-                referral_code = context.args[0]
-
                 try:
-
-                    referrer_id = int(
-                        referral_code
-                    )
-
-                except ValueError:
-
+                    referrer_id = int(context.args[0])
+                except (ValueError, TypeError):
                     referrer_id = None
-
-
-                # ------------------------------------------------
-                # SELF REFERRAL PROTECTION
-                # ------------------------------------------------
 
                 if (
                     referrer_id
                     and referrer_id != telegram_id
                 ):
 
-                    # --------------------------------------------
-                    # CHECK REFERRER
-                    # --------------------------------------------
-
                     cursor.execute(
                         """
                         SELECT telegram_id
                         FROM users
                         WHERE telegram_id = %s
+                        FOR UPDATE
                         """,
                         (referrer_id,)
                     )
 
                     referrer = cursor.fetchone()
 
-
                     if referrer:
-
-                        # ----------------------------------------
-                        # CHECK DUPLICATE REFERRAL
-                        # ----------------------------------------
 
                         cursor.execute(
                             """
@@ -267,12 +169,9 @@ async def start_command(
 
                         already_referred = cursor.fetchone()
 
-
                         if not already_referred:
 
-                            # ------------------------------------
-                            # SAVE referred_by
-                            # ------------------------------------
+                            # Save referrer
 
                             cursor.execute(
                                 """
@@ -286,10 +185,7 @@ async def start_command(
                                 )
                             )
 
-
-                            # ------------------------------------
-                            # REWARD REFERRER
-                            # ------------------------------------
+                            # Reward referrer
 
                             cursor.execute(
                                 """
@@ -304,10 +200,7 @@ async def start_command(
                                 )
                             )
 
-
-                            # ------------------------------------
-                            # REWARD NEW USER
-                            # ------------------------------------
+                            # Reward new user
 
                             cursor.execute(
                                 """
@@ -321,10 +214,7 @@ async def start_command(
                                 )
                             )
 
-
-                            # ------------------------------------
-                            # REFERRER TRANSACTION
-                            # ------------------------------------
+                            # Referrer transaction
 
                             cursor.execute(
                                 """
@@ -343,10 +233,7 @@ async def start_command(
                                 )
                             )
 
-
-                            # ------------------------------------
-                            # NEW USER TRANSACTION
-                            # ------------------------------------
+                            # New user transaction
 
                             cursor.execute(
                                 """
@@ -365,10 +252,7 @@ async def start_command(
                                 )
                             )
 
-
-                            # ------------------------------------
-                            # REFERRAL RECORD
-                            # ------------------------------------
+                            # Referral record
 
                             cursor.execute(
                                 """
@@ -379,6 +263,8 @@ async def start_command(
                                     reward
                                 )
                                 VALUES (%s, %s, %s)
+                                ON CONFLICT (referred_user_id)
+                                DO NOTHING
                                 """,
                                 (
                                     referrer_id,
@@ -387,10 +273,7 @@ async def start_command(
                                 )
                             )
 
-
                             referred_user_rewarded = True
-                            referrer_rewarded = True
-
 
         # ====================================================
         # EXISTING USER
@@ -412,25 +295,21 @@ async def start_command(
                 )
             )
 
-
         connection.commit()
-
 
     except Exception as error:
 
         connection.rollback()
 
-        logger.error(
+        logger.exception(
             "Start command error: %s",
             error
         )
-
 
     finally:
 
         cursor.close()
         connection.close()
-
 
     # ========================================================
     # MAIN BUTTONS
@@ -467,7 +346,6 @@ async def start_command(
         keyboard
     )
 
-
     # ========================================================
     # WELCOME MESSAGE
     # ========================================================
@@ -481,14 +359,12 @@ async def start_command(
         f"Start earning W2E today!"
     )
 
-
     if referred_user_rewarded:
 
         message += (
             f"\n\n🎉 Referral bonus received!\n"
             f"+{REFERRED_USER_REWARD} W2E"
         )
-
 
     await update.message.reply_text(
         message,
@@ -521,9 +397,7 @@ async def referrals_command(
 
         cursor.execute(
             """
-            SELECT
-                referrals,
-                balance
+            SELECT referrals
             FROM users
             WHERE telegram_id = %s
             """,
@@ -599,9 +473,7 @@ async def referral_callback(
         referrals = 0
 
         if user:
-
             referrals = user["referrals"] or 0
-
 
         keyboard = [
 
@@ -626,7 +498,6 @@ async def referral_callback(
         reply_markup = InlineKeyboardMarkup(
             keyboard
         )
-
 
         await query.message.reply_text(
 
@@ -689,7 +560,6 @@ async def balance_callback(
 
             return
 
-
         await query.message.reply_text(
 
             "💰 YOUR WATCH2EARN BALANCE\n\n"
@@ -730,17 +600,16 @@ async def help_command(
 
 
 # ============================================================
-# MAIN
+# TELEGRAM APPLICATION
 # ============================================================
 
-def main():
+def create_application():
 
     if not BOT_TOKEN:
 
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN is not configured"
         )
-
 
     application = (
         Application
@@ -749,8 +618,6 @@ def main():
         .build()
     )
 
-
-    # Start
     application.add_handler(
         CommandHandler(
             "start",
@@ -758,8 +625,6 @@ def main():
         )
     )
 
-
-    # Referral
     application.add_handler(
         CommandHandler(
             "referrals",
@@ -767,18 +632,12 @@ def main():
         )
     )
 
-
-    # Help
     application.add_handler(
         CommandHandler(
             "help",
             help_command
         )
     )
-
-
-    # Callback buttons
-    from telegram.ext import CallbackQueryHandler
 
     application.add_handler(
         CallbackQueryHandler(
@@ -794,21 +653,4 @@ def main():
         )
     )
 
-
-    logger.info(
-        "Watch2Earn bot started"
-    )
-
-
-    application.run_polling(
-        allowed_updates=Update.ALL_TYPES
-    )
-
-
-# ============================================================
-# RUN
-# ============================================================
-
-if __name__ == "__main__":
-    main()
-```
+    return application
