@@ -1,4 +1,3 @@
-```python
 import os
 import hmac
 import hashlib
@@ -1631,4 +1630,3 @@ def remove_wallet(auth: TelegramAuth):
 
         if connection:
             connection.close()
-```
