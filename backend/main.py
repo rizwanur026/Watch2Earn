@@ -5,23 +5,38 @@ import json
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    Query,
+)
+
 from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel
 
-from database import init_database, get_connection
+from database import (
+    init_database,
+    get_connection
+)
+
+from bot import create_application
 
 
-# =========================
-# FastAPI App
-# =========================
+# ============================================================
+# FASTAPI
+# ============================================================
 
-app = FastAPI(title="Watch2Earn API")
+app = FastAPI(
+    title="Watch2Earn API",
+    version="5.0"
+)
 
 
-# =========================
+# ============================================================
 # CORS
-# =========================
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,16 +47,9 @@ app.add_middleware(
 )
 
 
-# =========================
-# Database
-# =========================
-
-init_database()
-
-
-# =========================
-# Constants
-# =========================
+# ============================================================
+# CONSTANTS
+# ============================================================
 
 DAILY_BONUS = 100
 AD_REWARD = 50
@@ -49,10 +57,48 @@ AD_REWARD = 50
 REFERRER_REWARD = 100
 REFERRED_USER_REWARD = 50
 
+AD_COOLDOWN_SECONDS = 30
 
-# =========================
-# Models
-# =========================
+
+# ============================================================
+# ENV
+# ============================================================
+
+BOT_TOKEN = os.getenv(
+    "TELEGRAM_BOT_TOKEN"
+)
+
+WEB_APP_URL = os.getenv(
+    "WEB_APP_URL",
+    "https://rizwanur026.github.io/Watch2Earn/"
+)
+
+RENDER_EXTERNAL_URL = os.getenv(
+    "RENDER_EXTERNAL_URL"
+)
+
+ADMIN_TELEGRAM_ID = os.getenv(
+    "ADMIN_TELEGRAM_ID"
+)
+
+
+# ============================================================
+# TELEGRAM APPLICATION
+# ============================================================
+
+telegram_application = create_application()
+
+
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+
+init_database()
+
+
+# ============================================================
+# MODELS
+# ============================================================
 
 class TelegramAuth(BaseModel):
     init_data: str
@@ -79,17 +125,25 @@ class WalletUpdate(BaseModel):
     wallet_address: str
 
 
-# =========================
-# Telegram Verification
-# =========================
+# ============================================================
+# TELEGRAM AUTHENTICATION
+# ============================================================
 
-def verify_telegram_init_data(init_data: str):
+def verify_telegram_init_data(
+    init_data: str
+):
 
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not BOT_TOKEN:
 
-    if not bot_token:
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN is not configured"
+        )
+
+    if not init_data:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram init data missing"
         )
 
     data = dict(
@@ -99,9 +153,13 @@ def verify_telegram_init_data(init_data: str):
         )
     )
 
-    received_hash = data.pop("hash", None)
+    received_hash = data.pop(
+        "hash",
+        None
+    )
 
     if not received_hash:
+
         raise HTTPException(
             status_code=401,
             detail="Telegram hash missing"
@@ -109,12 +167,14 @@ def verify_telegram_init_data(init_data: str):
 
     data_check_string = "\n".join(
         f"{key}={value}"
-        for key, value in sorted(data.items())
+        for key, value in sorted(
+            data.items()
+        )
     )
 
     secret_key = hmac.new(
         b"WebAppData",
-        bot_token.encode(),
+        BOT_TOKEN.encode(),
         hashlib.sha256
     ).digest()
 
@@ -128,6 +188,7 @@ def verify_telegram_init_data(init_data: str):
         calculated_hash,
         received_hash
     ):
+
         raise HTTPException(
             status_code=401,
             detail="Invalid Telegram authentication"
@@ -136,17 +197,20 @@ def verify_telegram_init_data(init_data: str):
     return data
 
 
-# =========================
-# Get Telegram User
-# =========================
+# ============================================================
+# TELEGRAM USER
+# ============================================================
 
-def get_telegram_user(init_data: str):
+def get_telegram_user(
+    init_data: str
+):
 
     data = verify_telegram_init_data(
         init_data
     )
 
     if "user" not in data:
+
         raise HTTPException(
             status_code=401,
             detail="Telegram user missing"
@@ -165,7 +229,9 @@ def get_telegram_user(init_data: str):
             detail="Invalid Telegram user data"
         )
 
-    telegram_id = telegram_user.get("id")
+    telegram_id = telegram_user.get(
+        "id"
+    )
 
     if not telegram_id:
 
@@ -177,9 +243,104 @@ def get_telegram_user(init_data: str):
     return telegram_user
 
 
-# =========================
-# Home
-# =========================
+# ============================================================
+# ADMIN CHECK
+# ============================================================
+
+def require_admin(
+    init_data: str
+):
+
+    telegram_user = get_telegram_user(
+        init_data
+    )
+
+    telegram_id = str(
+        telegram_user["id"]
+    )
+
+    if not ADMIN_TELEGRAM_ID:
+
+        raise HTTPException(
+            status_code=503,
+            detail="ADMIN_TELEGRAM_ID is not configured"
+        )
+
+    if telegram_id != str(
+        ADMIN_TELEGRAM_ID
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+    return telegram_user
+
+
+# ============================================================
+# STARTUP
+# ============================================================
+
+@app.on_event("startup")
+async def startup_event():
+
+    await telegram_application.initialize()
+
+    await telegram_application.start()
+
+    if RENDER_EXTERNAL_URL:
+
+        webhook_url = (
+            RENDER_EXTERNAL_URL.rstrip("/")
+            + "/telegram/webhook"
+        )
+
+        await telegram_application.bot.set_webhook(
+            url=webhook_url,
+            allowed_updates=[
+                "message",
+                "callback_query"
+            ]
+        )
+
+        print(
+            "Telegram webhook configured:",
+            webhook_url
+        )
+
+    else:
+
+        print(
+            "RENDER_EXTERNAL_URL not configured. "
+            "Telegram webhook was not set."
+        )
+
+
+# ============================================================
+# SHUTDOWN
+# ============================================================
+
+@app.on_event("shutdown")
+async def shutdown_event():
+
+    try:
+
+        await telegram_application.stop()
+
+        await telegram_application.shutdown()
+
+    except Exception as error:
+
+        print(
+            "Telegram shutdown error:",
+            error
+        )
+
+
+# ============================================================
+# HOME
+# ============================================================
 
 @app.get("/")
 def home():
@@ -187,40 +348,69 @@ def home():
     return {
         "status": "online",
         "app": "Watch2Earn",
-        "version": "4.0"
+        "version": "5.0"
     }
 
 
-# =========================
-# Health
-# =========================
+# ============================================================
+# HEALTH
+# ============================================================
 
 @app.get("/health")
 def health():
 
-    return {
-        "status": "healthy"
-    }
+    try:
+
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "SELECT 1"
+        )
+
+        cursor.fetchone()
+
+        cursor.close()
+        connection.close()
+
+        return {
+            "status": "healthy",
+            "database": "connected"
+        }
+
+    except Exception as error:
+
+        return {
+            "status": "unhealthy",
+            "database": "error",
+            "error": str(error)
+        }
 
 
-# =========================
-# Telegram Webhook
-# =========================
+# ============================================================
+# TELEGRAM WEBHOOK
+# ============================================================
 
 @app.post("/telegram/webhook")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(
+    request: Request
+):
 
     try:
 
-        update = await request.json()
+        update_data = await request.json()
 
-        from bot import process_update
+        update = Update.de_json(
+            update_data,
+            telegram_application.bot
+        )
 
-        result = process_update(update)
+        await telegram_application.process_update(
+            update
+        )
 
         return {
-            "ok": True,
-            "result": result
+            "ok": True
         }
 
     except Exception as error:
@@ -235,12 +425,14 @@ async def telegram_webhook(request: Request):
         }
 
 
-# =========================
-# Authenticate User
-# =========================
+# ============================================================
+# AUTH
+# ============================================================
 
 @app.post("/auth")
-def authenticate_user(auth: TelegramAuth):
+def authenticate_user(
+    auth: TelegramAuth
+):
 
     telegram_user = get_telegram_user(
         auth.init_data
@@ -248,8 +440,13 @@ def authenticate_user(auth: TelegramAuth):
 
     telegram_id = telegram_user["id"]
 
-    username = telegram_user.get("username")
-    first_name = telegram_user.get("first_name")
+    username = telegram_user.get(
+        "username"
+    )
+
+    first_name = telegram_user.get(
+        "first_name"
+    )
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -343,12 +540,14 @@ def authenticate_user(auth: TelegramAuth):
         connection.close()
 
 
-# =========================
-# Get User
-# =========================
+# ============================================================
+# GET USER
+# ============================================================
 
 @app.get("/users/{telegram_id}")
-def get_user(telegram_id: int):
+def get_user(
+    telegram_id: int
+):
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -393,12 +592,14 @@ def get_user(telegram_id: int):
         connection.close()
 
 
-# =========================
-# Daily Bonus
-# =========================
+# ============================================================
+# DAILY BONUS
+# ============================================================
 
 @app.post("/daily-bonus")
-def claim_daily_bonus(auth: TelegramAuth):
+def claim_daily_bonus(
+    auth: TelegramAuth
+):
 
     telegram_user = get_telegram_user(
         auth.init_data
@@ -416,6 +617,7 @@ def claim_daily_bonus(auth: TelegramAuth):
             SELECT *
             FROM users
             WHERE telegram_id = %s
+            FOR UPDATE
             """,
             (telegram_id,)
         )
@@ -434,6 +636,7 @@ def claim_daily_bonus(auth: TelegramAuth):
             SELECT *
             FROM daily_claims
             WHERE telegram_id = %s
+            FOR UPDATE
             """,
             (telegram_id,)
         )
@@ -452,7 +655,9 @@ def claim_daily_bonus(auth: TelegramAuth):
                     tzinfo=timezone.utc
                 )
 
-            elapsed = now - last_claim
+            elapsed = (
+                now - last_claim
+            )
 
             if elapsed.total_seconds() < 86400:
 
@@ -463,13 +668,14 @@ def claim_daily_bonus(auth: TelegramAuth):
 
                 return {
                     "success": False,
-                    "message": "Daily bonus already claimed",
-                    "remaining_hours": int(
-                        remaining // 3600
-                    ),
-                    "remaining_minutes": int(
-                        (remaining % 3600) // 60
-                    )
+                    "message":
+                        "Daily bonus already claimed",
+                    "remaining_hours":
+                        int(remaining // 3600),
+                    "remaining_minutes":
+                        int(
+                            (remaining % 3600) // 60
+                        )
                 }
 
         cursor.execute(
@@ -535,7 +741,8 @@ def claim_daily_bonus(auth: TelegramAuth):
         return {
             "success": True,
             "reward": DAILY_BONUS,
-            "balance": updated_user["balance"]
+            "balance":
+                updated_user["balance"]
         }
 
     except HTTPException:
@@ -563,9 +770,9 @@ def claim_daily_bonus(auth: TelegramAuth):
         connection.close()
 
 
-# =========================
-# Get Tasks
-# =========================
+# ============================================================
+# GET TASKS
+# ============================================================
 
 @app.get("/tasks")
 def get_tasks():
@@ -606,12 +813,17 @@ def get_tasks():
         connection.close()
 
 
-# =========================
-# Admin - Add Task
-# =========================
+# ============================================================
+# ADMIN ADD TASK
+# ============================================================
 
 @app.post("/admin/tasks")
-def create_task(task: TaskCreate):
+def create_task(
+    task: TaskCreate,
+    init_data: str = Query(...)
+):
+
+    require_admin(init_data)
 
     if task.reward <= 0:
 
@@ -677,9 +889,9 @@ def create_task(task: TaskCreate):
         connection.close()
 
 
-# =========================
-# Complete Task
-# =========================
+# ============================================================
+# COMPLETE TASK
+# ============================================================
 
 @app.post("/tasks/{task_id}/complete")
 def complete_task(
@@ -722,6 +934,7 @@ def complete_task(
             SELECT *
             FROM users
             WHERE telegram_id = %s
+            FOR UPDATE
             """,
             (telegram_id,)
         )
@@ -759,6 +972,35 @@ def complete_task(
 
         cursor.execute(
             """
+            INSERT INTO task_completions
+            (
+                telegram_id,
+                task_id
+            )
+            VALUES (%s, %s)
+            ON CONFLICT (telegram_id, task_id)
+            DO NOTHING
+            RETURNING id
+            """,
+            (
+                telegram_id,
+                task_id
+            )
+        )
+
+        completion = cursor.fetchone()
+
+        if not completion:
+
+            connection.rollback()
+
+            return {
+                "success": False,
+                "message": "Task already completed"
+            }
+
+        cursor.execute(
+            """
             UPDATE users
             SET balance = balance + %s
             WHERE telegram_id = %s
@@ -766,21 +1008,6 @@ def complete_task(
             (
                 task["reward"],
                 telegram_id
-            )
-        )
-
-        cursor.execute(
-            """
-            INSERT INTO task_completions
-            (
-                telegram_id,
-                task_id
-            )
-            VALUES (%s, %s)
-            """,
-            (
-                telegram_id,
-                task_id
             )
         )
 
@@ -817,7 +1044,8 @@ def complete_task(
         return {
             "success": True,
             "reward": task["reward"],
-            "balance": updated_user["balance"]
+            "balance":
+                updated_user["balance"]
         }
 
     except HTTPException:
@@ -845,12 +1073,14 @@ def complete_task(
         connection.close()
 
 
-# =========================
-# Watch Ad Reward
-# =========================
+# ============================================================
+# WATCH AD
+# ============================================================
 
 @app.post("/watch-ad")
-def watch_ad(auth: AdReward):
+def watch_ad(
+    auth: AdReward
+):
 
     telegram_user = get_telegram_user(
         auth.init_data
@@ -862,6 +1092,53 @@ def watch_ad(auth: AdReward):
     cursor = connection.cursor()
 
     try:
+
+        # Basic server-side cooldown.
+        # This is NOT real ad verification yet.
+
+        cursor.execute(
+            """
+            SELECT created_at
+            FROM reward_transactions
+            WHERE telegram_id = %s
+            AND reward_type = 'watch_ad'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (telegram_id,)
+        )
+
+        last_ad = cursor.fetchone()
+
+        if last_ad:
+
+            last_time = last_ad["created_at"]
+
+            if last_time.tzinfo is None:
+
+                last_time = last_time.replace(
+                    tzinfo=timezone.utc
+                )
+
+            now = datetime.now(timezone.utc)
+
+            elapsed = (
+                now - last_time
+            ).total_seconds()
+
+            if elapsed < AD_COOLDOWN_SECONDS:
+
+                remaining = int(
+                    AD_COOLDOWN_SECONDS - elapsed
+                )
+
+                return {
+                    "success": False,
+                    "message":
+                        "Please wait before watching another ad.",
+                    "remaining_seconds":
+                        remaining
+                }
 
         cursor.execute(
             """
@@ -908,8 +1185,10 @@ def watch_ad(auth: AdReward):
         return {
             "success": True,
             "reward": AD_REWARD,
-            "balance": user["balance"],
-            "ads_watched": user["ads_watched"]
+            "balance":
+                user["balance"],
+            "ads_watched":
+                user["ads_watched"]
         }
 
     except HTTPException:
@@ -942,7 +1221,9 @@ def watch_ad(auth: AdReward):
 # ============================================================
 
 @app.get("/referrals/{telegram_id}")
-def get_referrals(telegram_id: int):
+def get_referrals(
+    telegram_id: int
+):
 
     connection = get_connection()
     cursor = connection.cursor()
@@ -951,8 +1232,7 @@ def get_referrals(telegram_id: int):
 
         cursor.execute(
             """
-            SELECT
-                referrals
+            SELECT referrals
             FROM users
             WHERE telegram_id = %s
             """,
@@ -978,7 +1258,8 @@ def get_referrals(telegram_id: int):
                 r.created_at
             FROM referral_rewards r
             JOIN users u
-                ON u.telegram_id = r.referred_user_id
+                ON u.telegram_id =
+                   r.referred_user_id
             WHERE r.referrer_id = %s
             ORDER BY r.id DESC
             """,
@@ -989,9 +1270,12 @@ def get_referrals(telegram_id: int):
 
         return {
             "success": True,
-            "referrals": user["referrals"] or 0,
-            "referrer_reward": REFERRER_REWARD,
-            "referred_user_reward": REFERRED_USER_REWARD,
+            "referrals":
+                user["referrals"] or 0,
+            "referrer_reward":
+                REFERRER_REWARD,
+            "referred_user_reward":
+                REFERRED_USER_REWARD,
             "users": [
                 dict(item)
                 for item in referral_users
@@ -1009,7 +1293,9 @@ def get_referrals(telegram_id: int):
 # ============================================================
 
 @app.get("/leaderboard")
-def leaderboard(limit: int = 20):
+def leaderboard(
+    limit: int = 20
+):
 
     if limit < 1:
         limit = 1
@@ -1050,12 +1336,18 @@ def leaderboard(limit: int = 20):
             result.append(
                 {
                     "rank": index,
-                    "telegram_id": user["telegram_id"],
-                    "username": user["username"],
-                    "first_name": user["first_name"],
-                    "balance": user["balance"],
-                    "referrals": user["referrals"],
-                    "ads_watched": user["ads_watched"]
+                    "telegram_id":
+                        user["telegram_id"],
+                    "username":
+                        user["username"],
+                    "first_name":
+                        user["first_name"],
+                    "balance":
+                        user["balance"],
+                    "referrals":
+                        user["referrals"],
+                    "ads_watched":
+                        user["ads_watched"]
                 }
             )
 
@@ -1071,14 +1363,16 @@ def leaderboard(limit: int = 20):
 
 
 # ============================================================
-# WALLET
+# WALLET GET
 # ============================================================
 
 @app.get("/wallet")
-def get_wallet(auth: TelegramAuth):
+def get_wallet(
+    init_data: str = Query(...)
+):
 
     telegram_user = get_telegram_user(
-        auth.init_data
+        init_data
     )
 
     telegram_id = telegram_user["id"]
@@ -1110,8 +1404,10 @@ def get_wallet(auth: TelegramAuth):
 
         return {
             "success": True,
-            "wallet_address": user["wallet_address"],
-            "balance": user["balance"]
+            "wallet_address":
+                user["wallet_address"],
+            "balance":
+                user["balance"]
         }
 
     finally:
@@ -1120,8 +1416,14 @@ def get_wallet(auth: TelegramAuth):
         connection.close()
 
 
+# ============================================================
+# WALLET SAVE
+# ============================================================
+
 @app.post("/wallet")
-def save_wallet(wallet: WalletUpdate):
+def save_wallet(
+    wallet: WalletUpdate
+):
 
     telegram_user = get_telegram_user(
         wallet.init_data
@@ -1129,7 +1431,9 @@ def save_wallet(wallet: WalletUpdate):
 
     telegram_id = telegram_user["id"]
 
-    wallet_address = wallet.wallet_address.strip()
+    wallet_address = (
+        wallet.wallet_address.strip()
+    )
 
     if not wallet_address:
 
@@ -1188,9 +1492,12 @@ def save_wallet(wallet: WalletUpdate):
 
         return {
             "success": True,
-            "message": "TON wallet saved successfully",
-            "wallet_address": user["wallet_address"],
-            "balance": user["balance"]
+            "message":
+                "TON wallet saved successfully",
+            "wallet_address":
+                user["wallet_address"],
+            "balance":
+                user["balance"]
         }
 
     except HTTPException:
@@ -1218,8 +1525,14 @@ def save_wallet(wallet: WalletUpdate):
         connection.close()
 
 
+# ============================================================
+# WALLET REMOVE
+# ============================================================
+
 @app.delete("/wallet")
-def remove_wallet(auth: TelegramAuth):
+def remove_wallet(
+    auth: TelegramAuth
+):
 
     telegram_user = get_telegram_user(
         auth.init_data
