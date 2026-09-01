@@ -1,3 +1,4 @@
+```javascript
 // ============================================================
 // Watch2Earn Frontend
 // ============================================================
@@ -9,17 +10,22 @@ let balance = 0;
 let adsWatched = 0;
 let referrals = 0;
 
-const tg =
-    window.Telegram?.WebApp;
+const tg = window.Telegram?.WebApp;
 
 
 // ============================================================
-// TELEGRAM INIT
+// TELEGRAM INITIALIZATION
 // ============================================================
 
 if (tg) {
     tg.ready();
     tg.expand();
+
+    try {
+        tg.enableClosingConfirmation?.();
+    } catch (error) {
+        console.log("Telegram closing confirmation unavailable");
+    }
 }
 
 
@@ -48,7 +54,6 @@ function updateUI() {
             if (element) {
                 element.textContent = value;
             }
-
         }
     );
 }
@@ -66,32 +71,28 @@ async function apiRequest(
     const response = await fetch(
         `${API_URL}${endpoint}`,
         {
-            ...options
+            ...options,
+            headers: {
+                ...(options.headers || {})
+            }
         }
     );
 
-    let data;
+    let data = null;
 
     try {
-
         data = await response.json();
-
     } catch {
-
-        throw new Error(
-            "Invalid server response"
-        );
-
+        data = null;
     }
 
     if (!response.ok) {
 
         throw new Error(
-            data.detail ||
-            data.message ||
-            "Request failed"
+            data?.detail ||
+            data?.message ||
+            `Server error (${response.status})`
         );
-
     }
 
     return data;
@@ -99,7 +100,7 @@ async function apiRequest(
 
 
 // ============================================================
-// TELEGRAM AUTH
+// TELEGRAM AUTHENTICATION
 // ============================================================
 
 async function authenticateUser() {
@@ -135,7 +136,10 @@ async function authenticateUser() {
                 }
             );
 
-        if (data.user) {
+        if (
+            data &&
+            data.user
+        ) {
 
             balance =
                 Number(
@@ -327,6 +331,7 @@ async function loadTasks() {
             );
 
         if (
+            !data ||
             !data.success ||
             !Array.isArray(data.tasks) ||
             data.tasks.length === 0
@@ -425,7 +430,7 @@ function renderTask(
     const link =
         String(
             task.link || ""
-        );
+        ).trim();
 
     taskElement.innerHTML = `
         <div class="task-icon">
@@ -512,26 +517,11 @@ function getTaskIcon(type) {
 function escapeHTML(value) {
 
     return String(value)
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
-        .replaceAll(
-            "'",
-            "&#039;"
-        );
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 
@@ -580,7 +570,10 @@ async function startTask(
 
     try {
 
-        if (tg.openLink) {
+        if (
+            typeof tg.openLink ===
+            "function"
+        ) {
 
             tg.openLink(link);
 
@@ -593,7 +586,7 @@ async function startTask(
         }
 
         const completed =
-            confirm(
+            window.confirm(
                 "Did you complete this task?"
             );
 
@@ -703,6 +696,9 @@ async function completeTask(
 
                 button.dataset.completed =
                     "true";
+
+                button.dataset.completing =
+                    "false";
             }
 
             alert(
@@ -729,10 +725,13 @@ async function completeTask(
 
             button.dataset.completed =
                 "true";
+
+            button.dataset.completing =
+                "false";
         }
 
         alert(
-            `🎉 +${data.reward} W2E earned!`
+            `+${data.reward} W2E earned!`
         );
 
     } catch (error) {
@@ -803,9 +802,7 @@ async function watchAd() {
             ) {
 
                 alert(
-                    `Please wait ${
-                        data.remaining_seconds
-                    } seconds.`
+                    `Please wait ${data.remaining_seconds} seconds.`
                 );
 
             } else {
@@ -872,12 +869,15 @@ async function dailyBonus() {
 
     if (
         button &&
-        button.disabled
+        button.dataset.loading === "true"
     ) {
         return;
     }
 
     if (button) {
+
+        button.dataset.loading =
+            "true";
 
         button.disabled = true;
 
@@ -920,6 +920,9 @@ async function dailyBonus() {
                     "Claimed";
 
                 button.disabled = true;
+
+                button.dataset.loading =
+                    "false";
             }
 
             return;
@@ -935,13 +938,26 @@ async function dailyBonus() {
         if (button) {
 
             button.textContent =
-                "Claimed";
+                "Claimed ✓";
 
             button.disabled = true;
+
+            button.dataset.loading =
+                "false";
+        }
+
+        const dailyStatus =
+            document.getElementById(
+                "dailyStatus"
+            );
+
+        if (dailyStatus) {
+            dailyStatus.textContent =
+                "Claimed";
         }
 
         alert(
-            `🎁 +${data.reward} W2E earned!`
+            `+${data.reward} W2E earned!`
         );
 
     } catch (error) {
@@ -957,6 +973,9 @@ async function dailyBonus() {
 
             button.textContent =
                 "Claim";
+
+            button.dataset.loading =
+                "false";
         }
 
         alert(
@@ -1006,17 +1025,38 @@ async function copyReferral() {
 
     try {
 
-        await navigator.clipboard.writeText(
+        if (
+            navigator.clipboard &&
+            navigator.clipboard.writeText
+        ) {
+
+            await navigator.clipboard.writeText(
+                link
+            );
+
+            alert(
+                "Referral link copied!"
+            );
+
+        } else {
+
+            window.prompt(
+                "Copy your referral link:",
+                link
+            );
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Clipboard error:",
+            error
+        );
+
+        window.prompt(
+            "Copy your referral link:",
             link
         );
-
-        alert(
-            "Referral link copied!"
-        );
-
-    } catch {
-
-        alert(link);
     }
 }
 
@@ -1044,7 +1084,11 @@ function shareReferral() {
         "&text=" +
         encodeURIComponent(text);
 
-    if (tg?.openTelegramLink) {
+    if (
+        tg &&
+        typeof tg.openTelegramLink ===
+        "function"
+    ) {
 
         tg.openTelegramLink(
             shareUrl
@@ -1087,17 +1131,6 @@ async function loadReferralStats() {
 
         updateUI();
 
-        const refElement =
-            document.getElementById(
-                "referralCount"
-            );
-
-        if (refElement) {
-
-            refElement.textContent =
-                referrals;
-        }
-
     } catch (error) {
 
         console.error(
@@ -1127,7 +1160,6 @@ function loadReferralUI() {
         link
     ) {
 
-        // Input element must use value.
         linkElement.value =
             link;
     }
@@ -1140,9 +1172,21 @@ function loadReferralUI() {
 
 function connectWallet() {
 
-    alert(
-        "TON Wallet integration coming next!"
-    );
+    const walletInput =
+        document.getElementById(
+            "walletAddress"
+        );
+
+    if (walletInput) {
+
+        walletInput.focus();
+
+    } else {
+
+        alert(
+            "Wallet input not found."
+        );
+    }
 }
 
 
@@ -1194,6 +1238,7 @@ async function loadLeaderboard() {
             );
 
         if (
+            !data ||
             !data.success ||
             !Array.isArray(
                 data.leaderboard
@@ -1229,19 +1274,22 @@ async function loadLeaderboard() {
                 row.className =
                     "leaderboard-row";
 
+                const displayName =
+                    user.username
+                        ? `@${user.username}`
+                        : (
+                            user.first_name ||
+                            "User"
+                        );
+
                 const name =
                     escapeHTML(
-                        user.username
-                            ? `@${user.username}`
-                            : (
-                                user.first_name ||
-                                "User"
-                            )
+                        displayName
                     );
 
                 row.innerHTML = `
                     <div class="leader-rank">
-                        #${user.rank}
+                        #${Number(user.rank || 0)}
                     </div>
 
                     <div class="leader-user">
@@ -1286,8 +1334,6 @@ async function loadWallet() {
 
     try {
 
-        // FIX:
-        // Backend requires init_data as query parameter.
         const url =
             `${API_URL}/wallet?init_data=${
                 encodeURIComponent(
@@ -1590,30 +1636,19 @@ function showPage(pageId) {
         );
     }
 
-    if (
-        pageId === "tasks"
-    ) {
-
+    if (pageId === "tasks") {
         loadTasks();
     }
 
-    if (
-        pageId === "leaderboard"
-    ) {
-
+    if (pageId === "leaderboard") {
         loadLeaderboard();
     }
 
-    if (
-        pageId === "wallet"
-    ) {
-
+    if (pageId === "wallet") {
         loadWallet();
     }
 
-    if (
-        pageId === "referral"
-    ) {
+    if (pageId === "referral") {
 
         loadReferralStats();
         loadReferralUI();
@@ -1646,7 +1681,6 @@ async function startApp() {
 
     } else {
 
-        // Public data can still load.
         await loadTasks();
 
         await loadLeaderboard();
@@ -1655,7 +1689,30 @@ async function startApp() {
 
 
 // ============================================================
+// GLOBAL FUNCTIONS
+// ============================================================
+
+window.showPage = showPage;
+window.watchAd = watchAd;
+window.dailyBonus = dailyBonus;
+window.copyReferral = copyReferral;
+window.shareReferral = shareReferral;
+window.saveWallet = saveWallet;
+window.removeWallet = removeWallet;
+window.connectWallet = connectWallet;
+window.startGame = startGame;
+window.luckyBox = luckyBox;
+window.loadTasks = loadTasks;
+
+
+// ============================================================
 // RUN
 // ============================================================
 
-startApp();
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        startApp();
+    }
+);
+```
