@@ -2,6 +2,7 @@ import os
 import hmac
 import hashlib
 import json
+import asyncio
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 
@@ -13,8 +14,8 @@ from fastapi import (
 )
 
 from fastapi.middleware.cors import CORSMiddleware
-
 from pydantic import BaseModel
+from telegram import Update
 
 from database import (
     init_database,
@@ -30,7 +31,7 @@ from bot import create_application
 
 app = FastAPI(
     title="Watch2Earn API",
-    version="5.0"
+    version="5.1"
 )
 
 
@@ -61,12 +62,10 @@ AD_COOLDOWN_SECONDS = 30
 
 
 # ============================================================
-# ENV
+# ENVIRONMENT
 # ============================================================
 
-BOT_TOKEN = os.getenv(
-    "TELEGRAM_BOT_TOKEN"
-)
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 WEB_APP_URL = os.getenv(
     "WEB_APP_URL",
@@ -88,9 +87,12 @@ ADMIN_TELEGRAM_ID = os.getenv(
 
 telegram_application = create_application()
 
+telegram_ready = False
+telegram_lock = asyncio.Lock()
+
 
 # ============================================================
-# DATABASE INITIALIZATION
+# DATABASE
 # ============================================================
 
 init_database()
@@ -129,37 +131,36 @@ class WalletUpdate(BaseModel):
 # TELEGRAM AUTHENTICATION
 # ============================================================
 
-def verify_telegram_init_data(
-    init_data: str
-):
+def verify_telegram_init_data(init_data: str):
 
     if not BOT_TOKEN:
-
-        raise RuntimeError(
-            "TELEGRAM_BOT_TOKEN is not configured"
+        raise HTTPException(
+            status_code=503,
+            detail="TELEGRAM_BOT_TOKEN is not configured"
         )
 
     if not init_data:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram init data missing"
         )
 
-    data = dict(
-        parse_qsl(
-            init_data,
-            keep_blank_values=True
+    try:
+        data = dict(
+            parse_qsl(
+                init_data,
+                keep_blank_values=True
+            )
         )
-    )
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram init data"
+        )
 
-    received_hash = data.pop(
-        "hash",
-        None
-    )
+    received_hash = data.pop("hash", None)
 
     if not received_hash:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram hash missing"
@@ -167,9 +168,7 @@ def verify_telegram_init_data(
 
     data_check_string = "\n".join(
         f"{key}={value}"
-        for key, value in sorted(
-            data.items()
-        )
+        for key, value in sorted(data.items())
     )
 
     secret_key = hmac.new(
@@ -188,10 +187,32 @@ def verify_telegram_init_data(
         calculated_hash,
         received_hash
     ):
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Telegram authentication"
+        )
+
+    # Optional auth-date freshness check.
+    # Telegram init data should normally be recent.
+    try:
+        auth_date = int(data.get("auth_date", "0"))
+
+        if auth_date:
+            current_timestamp = int(
+                datetime.now(timezone.utc).timestamp()
+            )
+
+            # Allow up to 24 hours.
+            if current_timestamp - auth_date > 86400:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Telegram authentication data expired"
+                )
+
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Telegram auth date"
         )
 
     return data
@@ -201,40 +222,29 @@ def verify_telegram_init_data(
 # TELEGRAM USER
 # ============================================================
 
-def get_telegram_user(
-    init_data: str
-):
+def get_telegram_user(init_data: str):
 
-    data = verify_telegram_init_data(
-        init_data
-    )
+    data = verify_telegram_init_data(init_data)
 
     if "user" not in data:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram user missing"
         )
 
     try:
-
         telegram_user = json.loads(
             data["user"]
         )
-
     except json.JSONDecodeError:
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Telegram user data"
         )
 
-    telegram_id = telegram_user.get(
-        "id"
-    )
+    telegram_id = telegram_user.get("id")
 
     if not telegram_id:
-
         raise HTTPException(
             status_code=401,
             detail="Telegram ID missing"
@@ -247,9 +257,7 @@ def get_telegram_user(
 # ADMIN CHECK
 # ============================================================
 
-def require_admin(
-    init_data: str
-):
+def require_admin(init_data: str):
 
     telegram_user = get_telegram_user(
         init_data
@@ -260,16 +268,12 @@ def require_admin(
     )
 
     if not ADMIN_TELEGRAM_ID:
-
         raise HTTPException(
             status_code=503,
             detail="ADMIN_TELEGRAM_ID is not configured"
         )
 
-    if telegram_id != str(
-        ADMIN_TELEGRAM_ID
-    ):
-
+    if telegram_id != str(ADMIN_TELEGRAM_ID):
         raise HTTPException(
             status_code=403,
             detail="Admin access required"
@@ -279,42 +283,112 @@ def require_admin(
 
 
 # ============================================================
+# TELEGRAM INITIALIZATION
+# ============================================================
+
+async def initialize_telegram():
+
+    global telegram_ready
+
+    async with telegram_lock:
+
+        if telegram_ready:
+            return True
+
+        for attempt in range(1, 4):
+
+            try:
+
+                print(
+                    f"Telegram initialization attempt "
+                    f"{attempt}/3"
+                )
+
+                await telegram_application.initialize()
+
+                await telegram_application.start()
+
+                if RENDER_EXTERNAL_URL:
+
+                    webhook_url = (
+                        RENDER_EXTERNAL_URL.rstrip("/")
+                        + "/telegram/webhook"
+                    )
+
+                    await telegram_application.bot.set_webhook(
+                        url=webhook_url,
+                        allowed_updates=[
+                            "message",
+                            "callback_query"
+                        ]
+                    )
+
+                    print(
+                        "Telegram webhook configured:",
+                        webhook_url
+                    )
+
+                else:
+
+                    print(
+                        "RENDER_EXTERNAL_URL not configured. "
+                        "Telegram webhook was not set."
+                    )
+
+                telegram_ready = True
+
+                print(
+                    "Telegram application ready."
+                )
+
+                return True
+
+            except Exception as error:
+
+                print(
+                    f"Telegram initialization failed "
+                    f"(attempt {attempt}/3):",
+                    repr(error)
+                )
+
+                if attempt < 3:
+                    await asyncio.sleep(3)
+
+        print(
+            "Telegram initialization failed. "
+            "FastAPI will continue running."
+        )
+
+        telegram_ready = False
+
+        return False
+
+
+# ============================================================
 # STARTUP
 # ============================================================
 
 @app.on_event("startup")
 async def startup_event():
 
-    await telegram_application.initialize()
+    print("Watch2Earn API starting...")
 
-    await telegram_application.start()
-
-    if RENDER_EXTERNAL_URL:
-
-        webhook_url = (
-            RENDER_EXTERNAL_URL.rstrip("/")
-            + "/telegram/webhook"
-        )
-
-        await telegram_application.bot.set_webhook(
-            url=webhook_url,
-            allowed_updates=[
-                "message",
-                "callback_query"
-            ]
-        )
+    try:
+        init_database()
 
         print(
-            "Telegram webhook configured:",
-            webhook_url
+            "Database initialization completed."
         )
 
-    else:
+    except Exception as error:
 
         print(
-            "RENDER_EXTERNAL_URL not configured. "
-            "Telegram webhook was not set."
+            "Database initialization error:",
+            repr(error)
         )
+
+    # Telegram failure must NOT crash Render.
+    await initialize_telegram()
 
 
 # ============================================================
@@ -324,17 +398,28 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
 
+    global telegram_ready
+
+    if not telegram_ready:
+        return
+
     try:
 
         await telegram_application.stop()
 
         await telegram_application.shutdown()
 
+        telegram_ready = False
+
+        print(
+            "Telegram application stopped."
+        )
+
     except Exception as error:
 
         print(
             "Telegram shutdown error:",
-            error
+            repr(error)
         )
 
 
@@ -348,7 +433,12 @@ def home():
     return {
         "status": "online",
         "app": "Watch2Earn",
-        "version": "5.0"
+        "version": "5.1",
+        "telegram": (
+            "connected"
+            if telegram_ready
+            else "starting/unavailable"
+        )
     }
 
 
@@ -359,23 +449,21 @@ def home():
 @app.get("/health")
 def health():
 
+    connection = None
+    cursor = None
+
     try:
 
         connection = get_connection()
         cursor = connection.cursor()
 
-        cursor.execute(
-            "SELECT 1"
-        )
-
+        cursor.execute("SELECT 1")
         cursor.fetchone()
-
-        cursor.close()
-        connection.close()
 
         return {
             "status": "healthy",
-            "database": "connected"
+            "database": "connected",
+            "telegram": telegram_ready
         }
 
     except Exception as error:
@@ -383,8 +471,17 @@ def health():
         return {
             "status": "unhealthy",
             "database": "error",
+            "telegram": telegram_ready,
             "error": str(error)
         }
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if connection:
+            connection.close()
 
 
 # ============================================================
@@ -396,7 +493,20 @@ async def telegram_webhook(
     request: Request
 ):
 
+    global telegram_ready
+
     try:
+
+        if not telegram_ready:
+
+            ready = await initialize_telegram()
+
+            if not ready:
+
+                return {
+                    "ok": False,
+                    "message": "Telegram bot is not ready"
+                }
 
         update_data = await request.json()
 
@@ -417,7 +527,7 @@ async def telegram_webhook(
 
         print(
             "Telegram webhook error:",
-            error
+            repr(error)
         )
 
         return {
@@ -526,7 +636,7 @@ def authenticate_user(
 
         print(
             "Authentication error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -655,9 +765,7 @@ def claim_daily_bonus(
                     tzinfo=timezone.utc
                 )
 
-            elapsed = (
-                now - last_claim
-            )
+            elapsed = now - last_claim
 
             if elapsed.total_seconds() < 86400:
 
@@ -756,7 +864,7 @@ def claim_daily_bonus(
 
         print(
             "Daily bonus error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -875,7 +983,7 @@ def create_task(
 
         print(
             "Create task error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -1059,7 +1167,7 @@ def complete_task(
 
         print(
             "Task completion error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -1093,9 +1201,6 @@ def watch_ad(
 
     try:
 
-        # Basic server-side cooldown.
-        # This is NOT real ad verification yet.
-
         cursor.execute(
             """
             SELECT created_at
@@ -1110,6 +1215,8 @@ def watch_ad(
 
         last_ad = cursor.fetchone()
 
+        now = datetime.now(timezone.utc)
+
         if last_ad:
 
             last_time = last_ad["created_at"]
@@ -1119,8 +1226,6 @@ def watch_ad(
                 last_time = last_time.replace(
                     tzinfo=timezone.utc
                 )
-
-            now = datetime.now(timezone.utc)
 
             elapsed = (
                 now - last_time
@@ -1202,7 +1307,7 @@ def watch_ad(
 
         print(
             "Watch ad reward error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -1511,7 +1616,7 @@ def save_wallet(
 
         print(
             "Wallet save error:",
-            error
+            repr(error)
         )
 
         raise HTTPException(
@@ -1575,6 +1680,20 @@ def remove_wallet(
 
         connection.rollback()
         raise
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "Wallet remove error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to remove wallet"
+        )
 
     finally:
 
