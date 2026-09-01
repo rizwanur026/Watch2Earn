@@ -2,17 +2,27 @@
 // Watch2Earn Frontend
 // ===============================
 
-const API_URL = "https://watch2earn-lp3w.onrender.com";
+const API_URL =
+    "https://watch2earn-lp3w.onrender.com";
 
 let balance = 0;
 let adsWatched = 0;
 let referrals = 0;
 
-const tg = window.Telegram?.WebApp;
+const tg =
+    window.Telegram?.WebApp;
+
+
+// ===============================
+// Telegram
+// ===============================
 
 if (tg) {
+
     tg.ready();
+
     tg.expand();
+
 }
 
 
@@ -23,24 +33,39 @@ if (tg) {
 function updateUI() {
 
     const elements = {
+
         balance,
+
         adsWatched,
+
         refCount: referrals,
-        leaderBalance: balance,
+
         profileCoins: balance,
+
         profileAds: adsWatched,
-        profileRefs: referrals
+
+        profileRefs: referrals,
+
+        referralCount: referrals
+
     };
 
-    Object.entries(elements).forEach(([id, value]) => {
 
-        const element = document.getElementById(id);
+    Object.entries(elements).forEach(
+        ([id, value]) => {
 
-        if (element) {
-            element.textContent = value;
+            const element =
+                document.getElementById(id);
+
+            if (element) {
+
+                element.textContent =
+                    value;
+
+            }
+
         }
-
-    });
+    );
 
 }
 
@@ -49,30 +74,48 @@ function updateUI() {
 // API Helper
 // ===============================
 
-async function apiRequest(endpoint, options = {}) {
+async function apiRequest(
+    endpoint,
+    options = {}
+) {
 
-    const response = await fetch(
-        `${API_URL}${endpoint}`,
-        options
-    );
+    const response =
+        await fetch(
+            `${API_URL}${endpoint}`,
+            options
+        );
+
 
     let data;
 
+
     try {
-        data = await response.json();
+
+        data =
+            await response.json();
+
     } catch {
-        throw new Error("Invalid server response");
+
+        throw new Error(
+            "Invalid server response"
+        );
+
     }
 
+
     if (!response.ok) {
+
         throw new Error(
             data.detail ||
             data.message ||
             "Request failed"
         );
+
     }
 
+
     return data;
+
 }
 
 
@@ -82,9 +125,14 @@ async function apiRequest(endpoint, options = {}) {
 
 async function authenticateUser() {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
-        console.log("Telegram WebApp not detected.");
+        console.log(
+            "Telegram WebApp not detected."
+        );
 
         setGuestProfile();
 
@@ -92,33 +140,45 @@ async function authenticateUser() {
 
     }
 
+
     try {
 
-        const data = await apiRequest(
-            "/auth",
-            {
-                method: "POST",
+        const data =
+            await apiRequest(
+                "/auth",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-                body: JSON.stringify({
-                    init_data: tg.initData
-                })
-            }
-        );
+                    body: JSON.stringify({
+                        init_data:
+                            tg.initData
+                    })
+                }
+            );
+
 
         if (data.user) {
 
             balance =
-                Number(data.user.balance || 0);
+                Number(
+                    data.user.balance || 0
+                );
 
             adsWatched =
-                Number(data.user.ads_watched || 0);
+                Number(
+                    data.user.ads_watched || 0
+                );
 
             referrals =
-                Number(data.user.referrals || 0);
+                Number(
+                    data.user.referrals || 0
+                );
+
 
             updateUI();
 
@@ -149,6 +209,7 @@ function setTelegramProfile() {
     const user =
         tg?.initDataUnsafe?.user;
 
+
     if (!user) {
 
         setGuestProfile();
@@ -157,85 +218,142 @@ function setTelegramProfile() {
 
     }
 
+
     const fullName =
-        `${user.first_name || ""} ${user.last_name || ""}`
-            .trim();
+        `${user.first_name || ""} ${
+            user.last_name || ""
+        }`.trim();
+
 
     const headerTitle =
-        document.querySelector(".header h1");
+        document.querySelector(
+            ".header h1"
+        );
+
 
     const profileName =
-        document.querySelector(".profile-card h2");
+        document.querySelector(
+            ".profile-card h2"
+        );
+
 
     const profileInfo =
-        document.querySelector(".profile-card p");
+        document.querySelector(
+            ".profile-card p"
+        );
+
 
     const avatar =
-        document.querySelector(".avatar");
+        document.querySelector(
+            ".avatar"
+        );
+
 
     const profileAvatar =
-        document.querySelector(".profile-avatar");
+        document.querySelector(
+            ".profile-avatar"
+        );
+
 
     if (headerTitle) {
+
         headerTitle.textContent =
-            `Hi, ${user.first_name || "User"}!`;
+            `Hi, ${
+                user.first_name || "User"
+            }!`;
+
     }
+
 
     if (profileName) {
+
         profileName.textContent =
             fullName || "User";
+
     }
+
 
     if (profileInfo) {
+
         profileInfo.textContent =
             `Telegram ID: ${user.id}`;
+
     }
+
 
     if (avatar) {
+
         avatar.textContent =
-            (user.first_name || "W")
+            (
+                user.first_name ||
+                "W"
+            )
                 .charAt(0)
                 .toUpperCase();
+
     }
 
+
     if (profileAvatar) {
+
         profileAvatar.textContent =
-            (user.first_name || "W")
+            (
+                user.first_name ||
+                "W"
+            )
                 .charAt(0)
                 .toUpperCase();
+
     }
 
 }
 
 
 // ===============================
-// Guest Profile
+// Guest
 // ===============================
 
 function setGuestProfile() {
 
     const headerTitle =
-        document.querySelector(".header h1");
+        document.querySelector(
+            ".header h1"
+        );
+
 
     const profileName =
-        document.querySelector(".profile-card h2");
+        document.querySelector(
+            ".profile-card h2"
+        );
+
 
     const profileInfo =
-        document.querySelector(".profile-card p");
+        document.querySelector(
+            ".profile-card p"
+        );
+
 
     if (headerTitle) {
+
         headerTitle.textContent =
             "Hi, Guest!";
+
     }
+
 
     if (profileName) {
+
         profileName.textContent =
             "Guest";
+
     }
 
+
     if (profileInfo) {
+
         profileInfo.textContent =
             "Open this app from Telegram";
+
     }
 
 }
@@ -248,11 +366,15 @@ function setGuestProfile() {
 async function loadTasks() {
 
     const container =
-        document.getElementById("tasksContainer");
+        document.getElementById(
+            "tasksContainer"
+        );
+
 
     if (!container) {
         return;
     }
+
 
     container.innerHTML = `
         <div class="task">
@@ -263,10 +385,14 @@ async function loadTasks() {
         </div>
     `;
 
+
     try {
 
         const data =
-            await apiRequest("/tasks");
+            await apiRequest(
+                "/tasks"
+            );
+
 
         if (
             !data.success ||
@@ -287,11 +413,20 @@ async function loadTasks() {
 
         }
 
+
         container.innerHTML = "";
 
-        data.tasks.forEach(task => {
-            renderTask(container, task);
-        });
+
+        data.tasks.forEach(
+            task => {
+
+                renderTask(
+                    container,
+                    task
+                );
+
+            }
+        );
 
     } catch (error) {
 
@@ -299,6 +434,7 @@ async function loadTasks() {
             "Task loading error:",
             error
         );
+
 
         container.innerHTML = `
             <div class="task">
@@ -325,15 +461,24 @@ async function loadTasks() {
 // Render Task
 // ===============================
 
-function renderTask(container, task) {
+function renderTask(
+    container,
+    task
+) {
 
     const taskElement =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
-    taskElement.className = "task";
+
+    taskElement.className =
+        "task";
+
 
     const taskId =
         Number(task.id);
+
 
     const title =
         escapeHTML(
@@ -341,14 +486,19 @@ function renderTask(container, task) {
             "Untitled Task"
         );
 
+
     const description =
         escapeHTML(
             task.description ||
             "Complete this task"
         );
 
+
     const reward =
-        Number(task.reward || 0);
+        Number(
+            task.reward || 0
+        );
+
 
     const taskType =
         escapeHTML(
@@ -356,8 +506,12 @@ function renderTask(container, task) {
             "website"
         );
 
+
     const link =
-        String(task.link || "");
+        String(
+            task.link || ""
+        );
+
 
     taskElement.innerHTML = `
         <div class="task-icon">
@@ -382,10 +536,12 @@ function renderTask(container, task) {
         </button>
     `;
 
+
     const button =
         taskElement.querySelector(
             ".task-start-btn"
         );
+
 
     if (button) {
 
@@ -404,7 +560,10 @@ function renderTask(container, task) {
 
     }
 
-    container.appendChild(taskElement);
+
+    container.appendChild(
+        taskElement
+    );
 
 }
 
@@ -446,11 +605,26 @@ function getTaskIcon(type) {
 function escapeHTML(value) {
 
     return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 
 }
 
@@ -465,7 +639,10 @@ async function startTask(
     button
 ) {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -474,6 +651,7 @@ async function startTask(
         return;
 
     }
+
 
     if (!link) {
 
@@ -485,11 +663,16 @@ async function startTask(
 
     }
 
+
     if (
-        button?.dataset.completed === "true"
+        button?.dataset.completed ===
+        "true"
     ) {
+
         return;
+
     }
+
 
     if (button) {
 
@@ -499,6 +682,7 @@ async function startTask(
             "Opening...";
 
     }
+
 
     try {
 
@@ -515,16 +699,19 @@ async function startTask(
 
         }
 
+
         const completed =
             confirm(
                 "Did you complete this task?"
             );
 
+
         if (!completed) {
 
             if (button) {
 
-                button.disabled = false;
+                button.disabled =
+                    false;
 
                 button.textContent =
                     "Start";
@@ -534,6 +721,7 @@ async function startTask(
             return;
 
         }
+
 
         await completeTask(
             taskId,
@@ -547,14 +735,17 @@ async function startTask(
             error
         );
 
+
         if (button) {
 
-            button.disabled = false;
+            button.disabled =
+                false;
 
             button.textContent =
                 "Start";
 
         }
+
 
         alert(
             error.message ||
@@ -575,7 +766,10 @@ async function completeTask(
     button
 ) {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -585,25 +779,16 @@ async function completeTask(
 
     }
 
-    if (
-        button?.dataset.completing === "true"
-    ) {
-        return;
-    }
-
-    if (button) {
-
-        button.dataset.completing =
-            "true";
-
-        button.disabled = true;
-
-        button.textContent =
-            "Checking...";
-
-    }
 
     try {
+
+        if (button) {
+
+            button.textContent =
+                "Checking...";
+
+        }
+
 
         const data =
             await apiRequest(
@@ -623,6 +808,7 @@ async function completeTask(
                 }
             );
 
+
         if (!data.success) {
 
             if (button) {
@@ -630,10 +816,14 @@ async function completeTask(
                 button.textContent =
                     "Completed ✓";
 
+                button.disabled =
+                    true;
+
                 button.dataset.completed =
                     "true";
 
             }
+
 
             alert(
                 data.message ||
@@ -644,22 +834,29 @@ async function completeTask(
 
         }
 
+
         balance =
-            Number(data.balance || 0);
+            Number(
+                data.balance || 0
+            );
+
 
         updateUI();
+
 
         if (button) {
 
             button.textContent =
                 "Completed ✓";
 
-            button.disabled = true;
+            button.disabled =
+                true;
 
             button.dataset.completed =
                 "true";
 
         }
+
 
         alert(
             `🎉 +${data.reward} W2E earned!`
@@ -672,17 +869,17 @@ async function completeTask(
             error
         );
 
+
         if (button) {
 
-            button.disabled = false;
-
-            button.dataset.completing =
-                "false";
+            button.disabled =
+                false;
 
             button.textContent =
                 "Start";
 
         }
+
 
         alert(
             error.message ||
@@ -700,7 +897,10 @@ async function completeTask(
 
 async function watchAd() {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -709,6 +909,7 @@ async function watchAd() {
         return;
 
     }
+
 
     try {
 
@@ -730,24 +931,45 @@ async function watchAd() {
                 }
             );
 
+
         if (!data.success) {
 
-            alert(
-                data.message ||
-                "Ad reward failed."
-            );
+            if (
+                data.remaining_seconds
+            ) {
+
+                alert(
+                    `Please wait ${data.remaining_seconds} seconds.`
+                );
+
+            } else {
+
+                alert(
+                    data.message ||
+                    "Ad reward failed."
+                );
+
+            }
 
             return;
 
         }
 
+
         balance =
-            Number(data.balance || 0);
+            Number(
+                data.balance || 0
+            );
+
 
         adsWatched =
-            Number(data.ads_watched || 0);
+            Number(
+                data.ads_watched || 0
+            );
+
 
         updateUI();
+
 
         alert(
             `+${data.reward} W2E earned!`
@@ -759,6 +981,7 @@ async function watchAd() {
             "Watch ad error:",
             error
         );
+
 
         alert(
             error.message ||
@@ -776,7 +999,10 @@ async function watchAd() {
 
 async function dailyBonus() {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -786,24 +1012,33 @@ async function dailyBonus() {
 
     }
 
+
     const button =
-        document.getElementById("bonusBtn");
+        document.getElementById(
+            "bonusBtn"
+        );
+
 
     if (
         button &&
         button.disabled
     ) {
+
         return;
+
     }
+
 
     if (button) {
 
-        button.disabled = true;
+        button.disabled =
+            true;
 
         button.textContent =
             "Checking...";
 
     }
+
 
     try {
 
@@ -825,6 +1060,7 @@ async function dailyBonus() {
                 }
             );
 
+
         if (!data.success) {
 
             alert(
@@ -834,22 +1070,35 @@ async function dailyBonus() {
                 `${data.remaining_minutes || 0}m.`
             );
 
+
             if (button) {
-                button.textContent = "Claimed";
+
+                button.textContent =
+                    "Claimed";
+
             }
 
             return;
 
         }
 
+
         balance =
-            Number(data.balance || 0);
+            Number(
+                data.balance || 0
+            );
+
 
         updateUI();
 
+
         if (button) {
-            button.textContent = "Claimed";
+
+            button.textContent =
+                "Claimed";
+
         }
+
 
         alert(
             `🎁 +${data.reward} W2E earned!`
@@ -862,14 +1111,17 @@ async function dailyBonus() {
             error
         );
 
+
         if (button) {
 
-            button.disabled = false;
+            button.disabled =
+                false;
 
             button.textContent =
                 "Claim";
 
         }
+
 
         alert(
             error.message ||
@@ -890,6 +1142,7 @@ function getReferralLink() {
     const user =
         tg?.initDataUnsafe?.user;
 
+
     if (!user) {
 
         alert(
@@ -899,6 +1152,7 @@ function getReferralLink() {
         return null;
 
     }
+
 
     return (
         `https://t.me/Watch2EarnBot?start=${user.id}`
@@ -916,15 +1170,18 @@ async function copyReferral() {
     const link =
         getReferralLink();
 
+
     if (!link) {
         return;
     }
+
 
     try {
 
         await navigator.clipboard.writeText(
             link
         );
+
 
         alert(
             "Referral link copied!"
@@ -948,12 +1205,15 @@ function shareReferral() {
     const link =
         getReferralLink();
 
+
     if (!link) {
         return;
     }
 
+
     const text =
         "Join Watch2Earn and start earning W2E!";
+
 
     const shareUrl =
         "https://t.me/share/url?" +
@@ -961,6 +1221,7 @@ function shareReferral() {
         encodeURIComponent(link) +
         "&text=" +
         encodeURIComponent(text);
+
 
     if (tg?.openTelegramLink) {
 
@@ -989,9 +1250,11 @@ async function loadReferralStats() {
     const user =
         tg?.initDataUnsafe?.user;
 
+
     if (!user) {
         return;
     }
+
 
     try {
 
@@ -1000,22 +1263,15 @@ async function loadReferralStats() {
                 `/referrals/${user.id}`
             );
 
+
         referrals =
             Number(
                 data.referrals || 0
             );
 
+
         updateUI();
 
-        const refElement =
-            document.getElementById(
-                "referralCount"
-            );
-
-        if (refElement) {
-            refElement.textContent =
-                referrals;
-        }
 
     } catch (error) {
 
@@ -1030,7 +1286,7 @@ async function loadReferralStats() {
 
 
 // ===============================
-// Referral UI Helpers
+// Referral UI
 // ===============================
 
 function loadReferralUI() {
@@ -1038,22 +1294,23 @@ function loadReferralUI() {
     const link =
         getReferralLink();
 
+
     const linkElement =
         document.getElementById(
             "referralLink"
         );
 
-    const codeElement =
-        document.querySelector(
-            ".ref-code"
-        );
 
-    if (linkElement && link) {
-        linkElement.textContent = link;
-    }
+    if (
+        linkElement &&
+        link
+    ) {
 
-    if (codeElement && link) {
-        codeElement.textContent = link;
+        // INPUT uses value, not textContent
+
+        linkElement.value =
+            link;
+
     }
 
 }
@@ -1063,188 +1320,39 @@ function loadReferralUI() {
 // TON Wallet
 // ===============================
 
-function connectWallet() {
+async function loadWallet() {
 
-    alert(
-        "TON Wallet integration coming next!"
-    );
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
-}
-
-
-// ===============================
-// Games
-// ===============================
-
-function startGame() {
-
-    alert(
-        "Tap Challenge\n\n" +
-        "Mini game integration will be added next."
-    );
-
-}
-
-
-function luckyBox() {
-
-    alert(
-        "Lucky Box\n\n" +
-        "Game reward system will be added next."
-    );
-
-}
-
-
-// ===============================
-// Leaderboard
-// ===============================
-
-async function loadLeaderboard() {
-
-    const container =
-        document.getElementById(
-            "leaderboardContainer"
-        );
-
-    if (!container) {
         return;
+
     }
 
-    container.innerHTML =
-        "<p>Loading leaderboard...</p>";
 
     try {
 
         const data =
             await apiRequest(
-                "/leaderboard?limit=20"
+                `/wallet?init_data=${encodeURIComponent(
+                    tg.initData
+                )}`
             );
 
-        if (
-            !data.success ||
-            !Array.isArray(
-                data.leaderboard
-            )
-        ) {
-
-            container.innerHTML =
-                "<p>No leaderboard data.</p>";
-
-            return;
-
-        }
-
-        if (
-            data.leaderboard.length === 0
-        ) {
-
-            container.innerHTML =
-                "<p>No users yet.</p>";
-
-            return;
-
-        }
-
-        container.innerHTML = "";
-
-        data.leaderboard.forEach(
-            user => {
-
-                const row =
-                    document.createElement(
-                        "div"
-                    );
-
-                row.className =
-                    "leaderboard-row";
-
-                const name =
-                    escapeHTML(
-                        user.username
-                            ? `@${user.username}`
-                            : (
-                                user.first_name ||
-                                "User"
-                            )
-                    );
-
-                row.innerHTML = `
-                    <div class="leader-rank">
-                        #${user.rank}
-                    </div>
-
-                    <div class="leader-user">
-                        ${name}
-                    </div>
-
-                    <div class="leader-balance">
-                        ${Number(
-                            user.balance || 0
-                        )} W2E
-                    </div>
-                `;
-
-                container.appendChild(row);
-
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Leaderboard error:",
-            error
-        );
-
-        container.innerHTML =
-            "<p>Unable to load leaderboard.</p>";
-
-    }
-
-}
-
-
-// ===============================
-// Wallet Loading
-// ===============================
-
-async function loadWallet() {
-
-    if (!tg || !tg.initData) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_URL}/wallet`,
-                {
-                    method: "GET",
-                    headers: {
-                        "Accept":
-                            "application/json"
-                    }
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-            return;
-        }
 
         const walletInput =
             document.getElementById(
                 "walletAddress"
             );
 
+
         const walletStatus =
             document.getElementById(
                 "walletStatus"
             );
+
 
         if (walletInput) {
 
@@ -1252,6 +1360,7 @@ async function loadWallet() {
                 data.wallet_address || "";
 
         }
+
 
         if (walletStatus) {
 
@@ -1280,7 +1389,10 @@ async function loadWallet() {
 
 async function saveWallet() {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -1290,10 +1402,12 @@ async function saveWallet() {
 
     }
 
+
     const input =
         document.getElementById(
             "walletAddress"
         );
+
 
     if (!input) {
 
@@ -1305,8 +1419,10 @@ async function saveWallet() {
 
     }
 
+
     const walletAddress =
         input.value.trim();
+
 
     if (!walletAddress) {
 
@@ -1317,6 +1433,7 @@ async function saveWallet() {
         return;
 
     }
+
 
     try {
 
@@ -1332,19 +1449,23 @@ async function saveWallet() {
                     },
 
                     body: JSON.stringify({
+
                         init_data:
                             tg.initData,
 
                         wallet_address:
                             walletAddress
+
                     })
                 }
             );
+
 
         const walletStatus =
             document.getElementById(
                 "walletStatus"
             );
+
 
         if (walletStatus) {
 
@@ -1352,6 +1473,7 @@ async function saveWallet() {
                 "Wallet connected ✓";
 
         }
+
 
         alert(
             "TON wallet saved successfully!"
@@ -1363,6 +1485,7 @@ async function saveWallet() {
             "Wallet error:",
             error
         );
+
 
         alert(
             error.message ||
@@ -1380,7 +1503,10 @@ async function saveWallet() {
 
 async function removeWallet() {
 
-    if (!tg || !tg.initData) {
+    if (
+        !tg ||
+        !tg.initData
+    ) {
 
         alert(
             "Please open Watch2Earn from Telegram."
@@ -1389,6 +1515,7 @@ async function removeWallet() {
         return;
 
     }
+
 
     try {
 
@@ -1409,24 +1536,33 @@ async function removeWallet() {
             }
         );
 
+
         const input =
             document.getElementById(
                 "walletAddress"
             );
+
 
         const status =
             document.getElementById(
                 "walletStatus"
             );
 
+
         if (input) {
+
             input.value = "";
+
         }
 
+
         if (status) {
+
             status.textContent =
                 "No wallet connected";
+
         }
+
 
         alert(
             "Wallet removed."
@@ -1438,6 +1574,7 @@ async function removeWallet() {
             "Wallet remove error:",
             error
         );
+
 
         alert(
             error.message ||
@@ -1457,18 +1594,22 @@ function showPage(pageId) {
 
     document
         .querySelectorAll(".page")
-        .forEach(page => {
+        .forEach(
+            page => {
 
-            page.classList.remove(
-                "active"
-            );
+                page.classList.remove(
+                    "active"
+                );
 
-        });
+            }
+        );
+
 
     const selectedPage =
         document.getElementById(
             pageId
         );
+
 
     if (selectedPage) {
 
@@ -1478,15 +1619,19 @@ function showPage(pageId) {
 
     }
 
+
     document
         .querySelectorAll(".nav-btn")
-        .forEach(btn => {
+        .forEach(
+            btn => {
 
-            btn.classList.remove(
-                "active"
-            );
+                btn.classList.remove(
+                    "active"
+                );
 
-        });
+            }
+        );
+
 
     const pages = [
         "home",
@@ -1494,16 +1639,22 @@ function showPage(pageId) {
         "games",
         "leaderboard",
         "wallet",
-        "profile"
+        "profile",
+        "referral"
     ];
+
 
     const buttons =
         document.querySelectorAll(
             ".nav-btn"
         );
 
+
     const index =
-        pages.indexOf(pageId);
+        pages.indexOf(
+            pageId
+        );
+
 
     if (
         index !== -1 &&
@@ -1516,6 +1667,7 @@ function showPage(pageId) {
 
     }
 
+
     if (
         pageId === "leaderboard"
     ) {
@@ -1523,6 +1675,171 @@ function showPage(pageId) {
         loadLeaderboard();
 
     }
+
+
+    if (
+        pageId === "referral"
+    ) {
+
+        loadReferralStats();
+
+        loadReferralUI();
+
+    }
+
+
+    if (
+        pageId === "wallet"
+    ) {
+
+        loadWallet();
+
+    }
+
+}
+
+
+// ===============================
+// Leaderboard
+// ===============================
+
+async function loadLeaderboard() {
+
+    const container =
+        document.getElementById(
+            "leaderboardContainer"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML =
+        "<p>Loading leaderboard...</p>";
+
+
+    try {
+
+        const data =
+            await apiRequest(
+                "/leaderboard?limit=20"
+            );
+
+
+        if (
+            !data.success ||
+            !Array.isArray(
+                data.leaderboard
+            )
+        ) {
+
+            container.innerHTML =
+                "<p>No leaderboard data.</p>";
+
+            return;
+
+        }
+
+
+        if (
+            data.leaderboard.length === 0
+        ) {
+
+            container.innerHTML =
+                "<p>No users yet.</p>";
+
+            return;
+
+        }
+
+
+        container.innerHTML = "";
+
+
+        data.leaderboard.forEach(
+            user => {
+
+                const row =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                row.className =
+                    "leaderboard-row";
+
+
+                const name =
+                    escapeHTML(
+                        user.username
+                            ? `@${user.username}`
+                            : (
+                                user.first_name ||
+                                "User"
+                            )
+                    );
+
+
+                row.innerHTML = `
+                    <div class="leader-rank">
+                        #${user.rank}
+                    </div>
+
+                    <div class="leader-user">
+                        ${name}
+                    </div>
+
+                    <div class="leader-balance">
+                        ${Number(
+                            user.balance || 0
+                        )} W2E
+                    </div>
+                `;
+
+
+                container.appendChild(
+                    row
+                );
+
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Leaderboard error:",
+            error
+        );
+
+
+        container.innerHTML =
+            "<p>Unable to load leaderboard.</p>";
+
+    }
+
+}
+
+
+// ===============================
+// Games
+// ===============================
+
+function startGame() {
+
+    alert(
+        "Tap Challenge will be added next."
+    );
+
+}
+
+
+function luckyBox() {
+
+    alert(
+        "Lucky Box will be added next."
+    );
 
 }
 
