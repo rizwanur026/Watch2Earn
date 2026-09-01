@@ -1,674 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch2Earn</title>
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
-
+    <link rel="stylesheet" href="style.css">
 </head>
-
-
 <body>
-
 <div class="app">
 
-
-    <!-- Header -->
-
     <header class="header">
-
         <div>
-
-            <p class="small-text">
-                Welcome back
-            </p>
-
-            <h1>
-                Watch2Earn
-            </h1>
-
+            <p class="small-text">Welcome back</p>
+            <h1>Watch2Earn</h1>
         </div>
-
-        <div class="avatar">
-            W
-        </div>
-
+        <div class="avatar">W</div>
     </header>
 
-
-    <!-- Balance -->
-
     <section class="balance-card">
-
-        <div class="balance-label">
-            YOUR BALANCE
-        </div>
-
+        <div class="balance-label">YOUR BALANCE</div>
         <div class="balance">
-
-            <span id="balance">
-                0
-            </span>
-
-            <span class="coin">
-                W2E
-            </span>
-
+            <span id="balance">0</span>
+            <span class="coin">W2E</span>
         </div>
-
-        <div class="balance-sub">
-            Available Coins
-        </div>
-
+        <div class="balance-sub">Available Coins</div>
     </section>
-
-
-    <!-- Watch Ad -->
 
     <section class="watch-card">
-
-        <div class="watch-icon">
-            ▶
-        </div>
-
+        <div class="watch-icon">▶</div>
         <div class="watch-content">
-
-            <h2>
-                Watch & Earn
-            </h2>
-
-            <p>
-                Watch an ad and earn coins
-            </p>
-
+            <h2>Watch &amp; Earn</h2>
+            <p>Watch an ad and earn coins</p>
         </div>
-
-        <button
-            type="button"
-            onclick="watchAd()"
-        >
-            Watch
-        </button>
-
+        <button type="button" onclick="watchAd()">Watch</button>
     </section>
 
-
-    <!-- Quick Stats -->
-
     <div class="stats">
-
         <div class="stat">
-
-            <span>
-                🎬
-            </span>
-
-            <strong id="adsWatched">
-                0
-            </strong>
-
-            <small>
-                Ads Watched
-            </small>
-
+            <span>🎬</span>
+            <strong id="adsWatched">0</strong>
+            <small>Ads Watched</small>
         </div>
-
-
         <div class="stat">
-
-            <span>
-                🎁
-            </span>
-
-            <strong id="dailyStatus">
-                Ready
-            </strong>
-
-            <small>
-                Daily Bonus
-            </small>
-
+            <span>🎁</span>
+            <strong id="dailyStatus">Ready</strong>
+            <small>Daily Bonus</small>
         </div>
-
-
         <div class="stat">
-
-            <span>
-                👥
-            </span>
-
-            <strong id="refCount">
-                0
-            </strong>
-
-            <small>
-                Referrals
-            </small>
-
+            <span>👥</span>
+            <strong id="refCount">0</strong>
+            <small>Referrals</small>
         </div>
-
     </div>
 
-
-    <!-- Pages -->
-
     <main>
-
-
-        <!-- HOME -->
-
-        <section
-            id="home"
-            class="page active"
-        >
-
-            <h2 class="section-title">
-                Daily Rewards
-            </h2>
-
+        <section id="home" class="page active">
+            <h2 class="section-title">Daily Rewards</h2>
             <div class="reward-card">
-
                 <div>
-
-                    <h3>
-                        Daily Bonus
-                    </h3>
-
-                    <p>
-                        Claim your daily reward
-                    </p>
-
+                    <h3>Daily Bonus</h3>
+                    <p>Claim your daily reward</p>
                 </div>
-
-                <button
-                    type="button"
-                    onclick="dailyBonus()"
-                    id="bonusBtn"
-                >
-                    Claim
-                </button>
-
+                <button type="button" onclick="dailyBonus()" id="bonusBtn">Claim</button>
             </div>
-
         </section>
 
-
-        <!-- TASKS -->
-
-        <section
-            id="tasks"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Tasks
-            </h2>
-
+        <section id="tasks" class="page">
+            <h2 class="section-title">Tasks</h2>
             <div id="tasksContainer">
-
                 <div class="task">
-
                     <div class="task-info">
-
-                        <h3>
-                            Loading Tasks...
-                        </h3>
-
-                        <p>
-                            Please wait
-                        </p>
-
+                        <h3>Loading Tasks...</h3>
+                        <p>Please wait</p>
                     </div>
-
                 </div>
-
             </div>
-
         </section>
 
-
-        <!-- GAMES -->
-
-        <section
-            id="games"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Mini Games
-            </h2>
+        <section id="games" class="page">
+            <h2 class="section-title">Mini Games</h2>
 
             <div class="game-card">
-
-                <div class="game-icon">
-                    🎯
-                </div>
-
-                <h3>
-                    Tap Challenge
-                </h3>
-
-                <p>
-                    Tap as fast as you can!
-                </p>
-
-                <button
-                    type="button"
-                    onclick="startGame()"
-                >
-                    Play Game
-                </button>
-
+                <div class="game-icon">🎯</div>
+                <h3>Tap Challenge</h3>
+                <p>Tap as fast as you can!</p>
+                <button type="button" onclick="startGame()">Play Game</button>
             </div>
-
 
             <div class="game-card">
-
-                <div class="game-icon">
-                    🎁
-                </div>
-
-                <h3>
-                    Lucky Box
-                </h3>
-
-                <p>
-                    Try your luck and win coins.
-                </p>
-
-                <button
-                    type="button"
-                    onclick="luckyBox()"
-                >
-                    Open
-                </button>
-
+                <div class="game-icon">🎁</div>
+                <h3>Lucky Box</h3>
+                <p>Try your luck and win coins.</p>
+                <button type="button" onclick="luckyBox()">Open</button>
             </div>
-
         </section>
 
-
-        <!-- REFERRAL -->
-
-        <section
-            id="referral"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Invite Friends
-            </h2>
+        <section id="referral" class="page">
+            <h2 class="section-title">Invite Friends</h2>
 
             <div class="referral-card">
-
-                <div class="ref-icon">
-                    👥
-                </div>
-
-                <h2>
-                    Earn Together
-                </h2>
-
-                <p>
-                    Invite your friends and earn
-                    bonus coins.
-                </p>
+                <div class="ref-icon">👥</div>
+                <h2>Earn Together</h2>
+                <p>Invite your friends and earn bonus coins.</p>
 
                 <div class="ref-stats">
-
                     <div>
-
-                        <strong id="referralCount">
-                            0
-                        </strong>
-
-                        <small>
-                            Referrals
-                        </small>
-
+                        <strong id="referralCount">0</strong>
+                        <small>Referrals</small>
                     </div>
-
                     <div>
-
-                        <strong>
-                            100 W2E
-                        </strong>
-
-                        <small>
-                            Your Reward
-                        </small>
-
+                        <strong>100 W2E</strong>
+                        <small>Your Reward</small>
                     </div>
-
                 </div>
-
 
                 <div class="ref-link-box">
-
-                    <input
-                        type="text"
-                        id="referralLink"
-                        readonly
-                        placeholder="Generating referral link..."
-                    >
-
+                    <input type="text" id="referralLink" readonly placeholder="Generating referral link...">
                 </div>
 
-
-                <button
-                    type="button"
-                    onclick="copyReferral()"
-                >
-                    📋 Copy Referral Link
-                </button>
-
-
-                <button
-                    type="button"
-                    onclick="shareReferral()"
-                >
-                    📤 Share With Friends
-                </button>
-
+                <button type="button" onclick="copyReferral()">📋 Copy Referral Link</button>
+                <button type="button" onclick="shareReferral()">📤 Share With Friends</button>
 
                 <p class="ref-reward-info">
-                    Earn 100 W2E for every friend
-                    who joins through your link.
+                    Earn 100 W2E for every friend who joins through your link.
                 </p>
-
             </div>
-
         </section>
 
-
-        <!-- LEADERBOARD -->
-
-        <section
-            id="leaderboard"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Leaderboard
-            </h2>
-
+        <section id="leaderboard" class="page">
+            <h2 class="section-title">Leaderboard</h2>
             <div id="leaderboardContainer">
-
-                <p>
-                    Loading leaderboard...
-                </p>
-
+                <p>Loading leaderboard...</p>
             </div>
-
         </section>
 
-
-        <!-- WALLET -->
-
-        <section
-            id="wallet"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Wallet
-            </h2>
+        <section id="wallet" class="page">
+            <h2 class="section-title">Wallet</h2>
 
             <div class="wallet-card">
+                <div class="wallet-icon">👛</div>
+                <h2>Connect Wallet</h2>
+                <p>Connect your TON wallet to manage your rewards.</p>
 
-                <div class="wallet-icon">
-                    👛
-                </div>
+                <input type="text" id="walletAddress" placeholder="Enter TON wallet address">
 
-                <h2>
-                    Connect Wallet
-                </h2>
+                <button type="button" onclick="saveWallet()">Save TON Wallet</button>
+                <button type="button" onclick="removeWallet()">Remove Wallet</button>
 
-                <p>
-                    Connect your TON wallet
-                    to manage your rewards.
-                </p>
-
-                <input
-                    type="text"
-                    id="walletAddress"
-                    placeholder="Enter TON wallet address"
-                >
-
-                <button
-                    type="button"
-                    onclick="saveWallet()"
-                >
-                    Save TON Wallet
-                </button>
-
-                <button
-                    type="button"
-                    onclick="removeWallet()"
-                >
-                    Remove Wallet
-                </button>
-
-                <div id="walletStatus">
-                    Not Connected
-                </div>
-
+                <div id="walletStatus">Not Connected</div>
             </div>
-
         </section>
 
-
-        <!-- PROFILE -->
-
-        <section
-            id="profile"
-            class="page"
-        >
-
-            <h2 class="section-title">
-                Profile
-            </h2>
+        <section id="profile" class="page">
+            <h2 class="section-title">Profile</h2>
 
             <div class="profile-card">
-
-                <div class="profile-avatar">
-                    W
-                </div>
-
-                <h2>
-                    Watch2Earn User
-                </h2>
-
-                <p>
-                    User ID: #000001
-                </p>
+                <div class="profile-avatar">W</div>
+                <h2>Watch2Earn User</h2>
+                <p>User ID: #000001</p>
 
                 <div class="profile-stats">
-
                     <div>
-
-                        <strong id="profileCoins">
-                            0
-                        </strong>
-
-                        <small>
-                            Coins
-                        </small>
-
+                        <strong id="profileCoins">0</strong>
+                        <small>Coins</small>
                     </div>
-
                     <div>
-
-                        <strong id="profileAds">
-                            0
-                        </strong>
-
-                        <small>
-                            Ads
-                        </small>
-
+                        <strong id="profileAds">0</strong>
+                        <small>Ads</small>
                     </div>
-
                     <div>
-
-                        <strong id="profileRefs">
-                            0
-                        </strong>
-
-                        <small>
-                            Referrals
-                        </small>
-
+                        <strong id="profileRefs">0</strong>
+                        <small>Referrals</small>
                     </div>
-
                 </div>
-
             </div>
-
         </section>
-
-
     </main>
 
-
-    <!-- Bottom Navigation -->
-
     <nav class="bottom-nav">
-
-        <button
-            type="button"
-            onclick="showPage('home')"
-            class="nav-btn active"
-        >
-
-            <span>
-                ⌂
-            </span>
-
-            Home
-
+        <button type="button" onclick="showPage('home')" class="nav-btn active">
+            <span>⌂</span>Home
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('tasks')"
-            class="nav-btn"
-        >
-
-            <span>
-                ✓
-            </span>
-
-            Tasks
-
+        <button type="button" onclick="showPage('tasks')" class="nav-btn">
+            <span>✓</span>Tasks
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('games')"
-            class="nav-btn"
-        >
-
-            <span>
-                🎮
-            </span>
-
-            Games
-
+        <button type="button" onclick="showPage('games')" class="nav-btn">
+            <span>🎮</span>Games
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('leaderboard')"
-            class="nav-btn"
-        >
-
-            <span>
-                🏆
-            </span>
-
-            Rank
-
+        <button type="button" onclick="showPage('leaderboard')" class="nav-btn">
+            <span>🏆</span>Rank
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('wallet')"
-            class="nav-btn"
-        >
-
-            <span>
-                👛
-            </span>
-
-            Wallet
-
+        <button type="button" onclick="showPage('wallet')" class="nav-btn">
+            <span>👛</span>Wallet
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('profile')"
-            class="nav-btn"
-        >
-
-            <span>
-                👤
-            </span>
-
-            Profile
-
+        <button type="button" onclick="showPage('profile')" class="nav-btn">
+            <span>👤</span>Profile
         </button>
-
-
-        <button
-            type="button"
-            onclick="showPage('referral')"
-            class="nav-btn"
-        >
-
-            <span>
-                👥
-            </span>
-
-            Invite
-
+        <button type="button" onclick="showPage('referral')" class="nav-btn">
+            <span>👥</span>Invite
         </button>
-
     </nav>
-
-
 </div>
 
-
-<!-- Telegram Mini App -->
-
-<script
-    src="https://telegram.org/js/telegram-web-app.js"
-></script>
-
-
-<!-- Main JS -->
-
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="script.js"></script>
-
-
 </body>
-
 </html>
