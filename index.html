@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 
@@ -48,7 +49,6 @@
     </header>
 
 
-
     <!-- Balance -->
 
     <section class="balance-card">
@@ -76,7 +76,6 @@
     </section>
 
 
-
     <!-- Watch Ad -->
 
     <section class="watch-card">
@@ -97,12 +96,14 @@
 
         </div>
 
-        <button onclick="watchAd()">
+        <button
+            type="button"
+            onclick="watchAd()"
+        >
             Watch
         </button>
 
     </section>
-
 
 
     <!-- Quick Stats -->
@@ -162,7 +163,6 @@
     </div>
 
 
-
     <!-- Pages -->
 
     <main>
@@ -179,7 +179,6 @@
                 Daily Rewards
             </h2>
 
-
             <div class="reward-card">
 
                 <div>
@@ -194,8 +193,8 @@
 
                 </div>
 
-
                 <button
+                    type="button"
                     onclick="dailyBonus()"
                     id="bonusBtn"
                 >
@@ -205,7 +204,6 @@
             </div>
 
         </section>
-
 
 
         <!-- TASKS -->
@@ -218,7 +216,6 @@
             <h2 class="section-title">
                 Tasks
             </h2>
-
 
             <div id="tasksContainer">
 
@@ -243,7 +240,6 @@
         </section>
 
 
-
         <!-- GAMES -->
 
         <section
@@ -254,7 +250,6 @@
             <h2 class="section-title">
                 Mini Games
             </h2>
-
 
             <div class="game-card">
 
@@ -270,7 +265,10 @@
                     Tap as fast as you can!
                 </p>
 
-                <button onclick="startGame()">
+                <button
+                    type="button"
+                    onclick="startGame()"
+                >
                     Play Game
                 </button>
 
@@ -291,14 +289,16 @@
                     Try your luck and win coins.
                 </p>
 
-                <button onclick="luckyBox()">
+                <button
+                    type="button"
+                    onclick="luckyBox()"
+                >
                     Open
                 </button>
 
             </div>
 
         </section>
-
 
 
         <!-- REFERRAL -->
@@ -312,26 +312,20 @@
                 Invite Friends
             </h2>
 
-
             <div class="referral-card">
 
                 <div class="ref-icon">
                     👥
                 </div>
 
-
                 <h2>
                     Earn Together
                 </h2>
-
 
                 <p>
                     Invite your friends and earn
                     bonus coins.
                 </p>
-
-
-                <!-- Referral Stats -->
 
                 <div class="ref-stats">
 
@@ -361,8 +355,6 @@
 
                 </div>
 
-
-                <!-- Referral Link -->
 
                 <div class="ref-link-box">
 
@@ -402,7 +394,6 @@
         </section>
 
 
-
         <!-- LEADERBOARD -->
 
         <section
@@ -413,7 +404,6 @@
             <h2 class="section-title">
                 Leaderboard
             </h2>
-
 
             <div id="leaderboardContainer">
 
@@ -426,7 +416,6 @@
         </section>
 
 
-
         <!-- WALLET -->
 
         <section
@@ -437,7 +426,6 @@
             <h2 class="section-title">
                 Wallet
             </h2>
-
 
             <div class="wallet-card">
 
@@ -454,27 +442,25 @@
                     to manage your rewards.
                 </p>
 
-
                 <input
                     type="text"
                     id="walletAddress"
                     placeholder="Enter TON wallet address"
                 >
 
-
                 <button
+                    type="button"
                     onclick="saveWallet()"
                 >
                     Save TON Wallet
                 </button>
 
-
                 <button
+                    type="button"
                     onclick="removeWallet()"
                 >
                     Remove Wallet
                 </button>
-
 
                 <div id="walletStatus">
                     Not Connected
@@ -483,7 +469,6 @@
             </div>
 
         </section>
-
 
 
         <!-- PROFILE -->
@@ -497,26 +482,21 @@
                 Profile
             </h2>
 
-
             <div class="profile-card">
 
                 <div class="profile-avatar">
                     W
                 </div>
 
-
                 <h2>
                     Watch2Earn User
                 </h2>
-
 
                 <p>
                     User ID: #000001
                 </p>
 
-
                 <div class="profile-stats">
-
 
                     <div>
 
@@ -530,7 +510,6 @@
 
                     </div>
 
-
                     <div>
 
                         <strong id="profileAds">
@@ -542,7 +521,6 @@
                         </small>
 
                     </div>
-
 
                     <div>
 
@@ -566,13 +544,12 @@
     </main>
 
 
-
     <!-- Bottom Navigation -->
 
     <nav class="bottom-nav">
 
-
         <button
+            type="button"
             onclick="showPage('home')"
             class="nav-btn active"
         >
@@ -587,6 +564,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('tasks')"
             class="nav-btn"
         >
@@ -601,6 +579,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('games')"
             class="nav-btn"
         >
@@ -615,6 +594,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('leaderboard')"
             class="nav-btn"
         >
@@ -629,6 +609,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('wallet')"
             class="nav-btn"
         >
@@ -643,6 +624,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('profile')"
             class="nav-btn"
         >
@@ -657,6 +639,7 @@
 
 
         <button
+            type="button"
             onclick="showPage('referral')"
             class="nav-btn"
         >
@@ -669,12 +652,10 @@
 
         </button>
 
-
     </nav>
 
 
 </div>
-
 
 
 <!-- Telegram Mini App -->
@@ -692,3 +673,4 @@
 </body>
 
 </html>
+```
